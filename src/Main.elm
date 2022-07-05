@@ -4,7 +4,7 @@ import Array
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (disabled, maxlength, style, type_, value)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onInput)
 
 
 
@@ -68,7 +68,7 @@ initalModel =
 
 word : String
 word =
-    String.toUpper "GUESS"
+    "GUESS"
 
 
 view : Model -> Html Msg
@@ -162,11 +162,29 @@ activeRow attempt =
                     , style "text-align" "center"
                     , style "text-transform" "uppercase"
                     , type_ "text"
-                    , value (String.fromChar char)
+                    , onInput
+                        (\str ->
+                            str
+                                |> String.toList
+                                |> List.head
+                                |> Maybe.withDefault ' '
+                                |> CharEntered
+                        )
+                    , value
+                        (if char == ' ' then
+                            ""
+
+                         else
+                            String.fromChar char
+                        )
                     ]
                     []
             )
-        , button [ onClick SubmitAttempt, disabled (List.length attempt < defaultRowLength) ] [ text "Submit" ]
+        , button
+            [ onClick SubmitAttempt
+            , disabled (List.length attempt < defaultRowLength)
+            ]
+            [ text "Submit" ]
         ]
 
 
@@ -191,17 +209,26 @@ update msg model =
     case msg of
         SubmitAttempt ->
             { model
-                | history = model.history ++ [ validateAttempt model.currentAttempt word ]
+                | history = model.history ++ [ validateAttempt model.currentAttempt ]
                 , currentAttempt = []
             }
 
         CharEntered char ->
-            { model | currentAttempt = model.currentAttempt ++ [ char ] }
+            if char /= ' ' then
+                { model | currentAttempt = model.currentAttempt ++ [ Char.toUpper char ] }
+
+            else
+                model
 
 
-validateAttempt : List Char -> String -> List Letter
-validateAttempt attempt correct =
+validateAttempt_ : String -> List Char -> List Letter
+validateAttempt_ correct attempt =
     List.map2 (\attemptChar -> \correctChar -> ( attemptChar, validateChar attemptChar correctChar correct )) attempt (String.toList correct)
+
+
+validateAttempt : List Char -> List Letter
+validateAttempt =
+    validateAttempt_ word
 
 
 validateChar : Char -> Char -> String -> LetterState
