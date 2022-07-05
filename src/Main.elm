@@ -48,7 +48,7 @@ type alias Letter =
 
 type Msg
     = SubmitAttempt
-    | CharEntered Char
+    | CharEntered (Maybe Char)
 
 
 initalModel : Model
@@ -167,7 +167,6 @@ activeRow attempt =
                             str
                                 |> String.toList
                                 |> List.head
-                                |> Maybe.withDefault ' '
                                 |> CharEntered
                         )
                     , value
@@ -213,12 +212,11 @@ update msg model =
                 , currentAttempt = []
             }
 
-        CharEntered char ->
-            if char /= ' ' then
-                { model | currentAttempt = model.currentAttempt ++ [ Char.toUpper char ] }
+        CharEntered (Just char) ->
+            { model | currentAttempt = model.currentAttempt ++ [ Char.toUpper char ] }
 
-            else
-                model
+        CharEntered Nothing ->
+            model
 
 
 validateAttempt_ : String -> List Char -> List Letter
