@@ -1,8 +1,7 @@
-module Main exposing (..)
+module Main exposing (main)
 
 import Array
 import Browser
-import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (disabled, maxlength, style, type_, value)
 import Html.Events exposing (onClick)
@@ -27,13 +26,12 @@ import Html.Events exposing (onClick)
 
 
 type alias Attempt =
-    List Char
+    List Letter
 
 
 type alias Model =
-    { history : List (List Letter)
-    , currentAttempt : Attempt
-    , letters : Dict Char LetterState
+    { history : List Attempt
+    , currentAttempt : List Char
     }
 
 
@@ -53,23 +51,19 @@ type Msg
     | CharEntered Char
 
 
-
--- A list of all characters from A-Z
-
-
-alphabet : List Char
-alphabet =
-    List.range 0 25 |> List.map (\i -> Char.fromCode (65 + i))
-
-
 initalModel : Model
 initalModel =
-    { history =
-        [ [ ( 'H', NotIncluded ), ( 'U', CorrectPlace ), ( 'M', NotIncluded ), ( 'A', NotIncluded ), ( 'N', NotIncluded ) ]
-        ]
+    { history = []
     , currentAttempt = []
-    , letters = Dict.empty
     }
+
+
+
+{-
+   alphabet : List Char
+   alphabet =
+       List.range 0 25 |> List.map (\i -> Char.fromCode (65 + i))
+-}
 
 
 word : String
@@ -89,7 +83,6 @@ view model =
             row
             model.history
             ++ [ activeRow model.currentAttempt
-               , alphabetView (List.map (\letter -> ( letter, NotTried )) alphabet)
                ]
         )
 
@@ -177,16 +170,6 @@ activeRow attempt =
         ]
 
 
-alphabetView : List Letter -> Html Msg
-alphabetView a =
-    div
-        [ style "display" "flex"
-        , style "gap" "10px"
-        , style "flex-wrap" "wrap"
-        ]
-        (List.map (\letter -> letterView letter) a)
-
-
 backgroundColor : LetterState -> String
 backgroundColor state =
     case state of
@@ -201,23 +184,6 @@ backgroundColor state =
 
         IncorrectPlace ->
             "orange"
-
-
-letterView : Letter -> Html Msg
-letterView letter =
-    let
-        char =
-            Tuple.first letter
-    in
-    button
-        [ style "background-color" (backgroundColor (Tuple.second letter))
-        , style "font-size" "24px"
-        , style "display" "flex"
-        , style "align-items" "center"
-        , style "justify-content" "center"
-        , onClick (CharEntered char)
-        ]
-        [ text (String.fromChar char) ]
 
 
 update : Msg -> Model -> Model
