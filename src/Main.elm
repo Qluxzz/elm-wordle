@@ -87,7 +87,7 @@ view model =
         )
 
 
-rowBase : Int -> List Char -> (Char -> Html Msg) -> Html Msg
+rowBase : Int -> List Char -> (Maybe Char -> Html Msg) -> Html Msg
 rowBase rowLength attempt elem =
     let
         arr =
@@ -110,7 +110,7 @@ rowBase rowLength attempt elem =
                         , style "text-align" "center"
                         , style "width" "1em"
                         ]
-                        [ elem (arr |> Array.get index |> Maybe.withDefault ' ') ]
+                        [ elem (arr |> Array.get index) ]
                 )
         )
 
@@ -170,11 +170,12 @@ activeRow attempt =
                                 |> CharEntered
                         )
                     , value
-                        (if char == ' ' then
-                            ""
+                        (case char of
+                            Just c ->
+                                String.fromChar c
 
-                         else
-                            String.fromChar char
+                            Nothing ->
+                                ""
                         )
                     ]
                     []
