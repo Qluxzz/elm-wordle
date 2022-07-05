@@ -28,13 +28,33 @@ type alias Model =
     { tries : Int
     , history : List String
     , currentAttempt : String
+    , letters : List Letter
     }
 
 
+type LetterState
+    = CorrectPlace
+    | IncorrectPlace
+    | NotIncluded
+    | NotTried
+
+
+type alias Letter =
+    ( Char, LetterState )
+
+
 type Msg
-    = Increment
-    | Decrement
+    = SubmitAttempt String
     | CharEntered String
+
+
+
+-- A list of all characters from A-Z
+
+
+alphabet : List Char
+alphabet =
+    List.range 0 25 |> List.map (\i -> Char.fromCode (65 + i))
 
 
 initalModel : Model
@@ -44,6 +64,7 @@ initalModel =
         [ "testa"
         ]
     , currentAttempt = "andel"
+    , letters = List.map (\char -> ( char, NotTried )) alphabet
     }
 
 
@@ -60,12 +81,12 @@ view model =
         , style "flex-direction" "column"
         , style "gap" "10px"
         ]
-        (List.append
-            (List.map
-                row
-                model.history
-            )
-            [ activeRow model.currentAttempt ]
+        (List.map
+            row
+            model.history
+            ++ [ activeRow model.currentAttempt
+               , alphabetView model.letters
+               ]
         )
 
 
@@ -125,14 +146,51 @@ activeRow attempt =
         )
 
 
+alphabetView : List Letter -> Html msg
+alphabetView a =
+    div
+        [ style "display" "flex"
+        , style "gap" "10px"
+        , style "flex-wrap" "wrap"
+        ]
+        (List.map (\letter -> letterView letter) a)
+
+
+letterView : Letter -> Html msg
+letterView letter =
+    let
+        backgroundColor : String
+        backgroundColor =
+            case letter of
+                ( _, NotIncluded ) ->
+                    "grey"
+
+                ( _, CorrectPlace ) ->
+                    "green"
+
+                ( _, NotTried ) ->
+                    "white"
+
+                ( _, IncorrectPlace ) ->
+                    "orange"
+    in
+    div
+        [ style "background-color" backgroundColor
+        , style "width" "1em"
+        , style "padding" "10px"
+        , style "font-size" "24px"
+        , style "display" "flex"
+        , style "align-items" "center"
+        , style "justify-content" "center"
+        ]
+        [ text (String.fromChar (Tuple.first letter)) ]
+
+
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        Increment ->
-            { model | tries = model.tries + 1 }
-
-        Decrement ->
-            { model | tries = model.tries - 1 }
+        SubmitAttempt attempt ->
+            model
 
         CharEntered char ->
             { model | currentAttempt = char }
