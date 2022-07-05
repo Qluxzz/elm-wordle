@@ -1,9 +1,11 @@
 module Main exposing (..)
 
+import Array
 import Browser
+import Dict exposing (Dict)
 import Html exposing (..)
-import Html.Attributes exposing (contenteditable, maxlength, style, value)
-import Html.Events exposing (onInput)
+import Html.Attributes exposing (disabled, maxlength, style, type_, value)
+import Html.Events exposing (onClick)
 
 
 
@@ -24,11 +26,14 @@ import Html.Events exposing (onInput)
 -}
 
 
+type alias Attempt =
+    List Char
+
+
 type alias Model =
-    { tries : Int
-    , history : List String
-    , currentAttempt : String
-    , letters : List Letter
+    { history : List (List Letter)
+    , currentAttempt : Attempt
+    , letters : Dict Char LetterState
     }
 
 
@@ -44,8 +49,8 @@ type alias Letter =
 
 
 type Msg
-    = SubmitAttempt String
-    | CharEntered String
+    = SubmitAttempt
+    | CharEntered Char
 
 
 
@@ -59,18 +64,17 @@ alphabet =
 
 initalModel : Model
 initalModel =
-    { tries = 0
-    , history =
-        [ "testa"
+    { history =
+        [ [ ( 'H', NotIncluded ), ( 'U', CorrectPlace ), ( 'M', NotIncluded ), ( 'A', NotIncluded ), ( 'N', NotIncluded ) ]
         ]
-    , currentAttempt = "andel"
-    , letters = List.map (\char -> ( char, NotTried )) alphabet
+    , currentAttempt = []
+    , letters = Dict.empty
     }
 
 
 word : String
 word =
-    "spela"
+    String.toUpper "GUESS"
 
 
 view : Model -> Html Msg
@@ -85,27 +89,24 @@ view model =
             row
             model.history
             ++ [ activeRow model.currentAttempt
-               , alphabetView model.letters
+               , alphabetView (List.map (\letter -> ( letter, NotTried )) alphabet)
                ]
         )
 
 
-rowBase : Int -> String -> (Char -> Html Msg) -> Html Msg
+rowBase : Int -> List Char -> (Char -> Html Msg) -> Html Msg
 rowBase rowLength attempt elem =
     let
-        mapped : List ( Int, String )
-        mapped =
-            [ ( 1, "" ) ]
+        arr =
+            attempt |> Array.fromList
     in
-    -- for (let i = 0; i < rowLength; ++i)
-    --   attempt[i]
     div
         [ style "display" "flex"
         , style "gap" "10px"
         ]
-        (List.range 1 rowLength
+        (List.range 0 (rowLength - 1)
             |> List.map
-                (\char ->
+                (\index ->
                     div
                         [ style "padding" "10px"
                         , style "border" "1px solid black"
@@ -116,37 +117,67 @@ rowBase rowLength attempt elem =
                         , style "text-align" "center"
                         , style "width" "1em"
                         ]
-                        [ elem (Char.fromCode char) ]
+                        [ elem (arr |> Array.get index |> Maybe.withDefault ' ') ]
                 )
         )
 
 
-row : String -> Html Msg
+defaultRowLength : Int
+defaultRowLength =
+    5
+
+
+row : List Letter -> Html msg
 row attempt =
-    rowBase 5 attempt (\char -> text (String.fromChar char))
-
-
-activeRow : String -> Html Msg
-activeRow attempt =
-    rowBase 5
-        attempt
-        (\char ->
-            div
-                [ maxlength 1
-                , style "width" "1em"
-                , style "border" "0px"
-                , style "font-size" "32px"
-                , style "text-align" "center"
-                , style "text-transform" "uppercase"
-                , contenteditable True
-                , onInput (\str -> CharEntered str)
-                , value (String.fromChar char)
-                ]
-                []
+    div
+        [ style "display" "flex"
+        , style "gap" "10px"
+        ]
+        (attempt
+            |> List.map
+                (\letter ->
+                    div
+                        [ style "padding" "10px"
+                        , style "border" "1px solid black"
+                        , style "border-radius" "10px"
+                        , style "text-transform" "uppercase"
+                        , style "font-size" "32px"
+                        , style "font-weight" "bold"
+                        , style "text-align" "center"
+                        , style "width" "1em"
+                        , style "background-color" (backgroundColor (Tuple.second letter))
+                        ]
+                        [ text (String.fromChar (Tuple.first letter)) ]
+                )
         )
 
 
-alphabetView : List Letter -> Html msg
+activeRow : List Char -> Html Msg
+activeRow attempt =
+    div
+        [ style "display" "flex"
+        , style "gap" "10px"
+        ]
+        [ rowBase defaultRowLength
+            attempt
+            (\char ->
+                input
+                    [ maxlength 1
+                    , style "width" "1em"
+                    , style "border" "0px"
+                    , style "font-size" "32px"
+                    , style "text-align" "center"
+                    , style "text-transform" "uppercase"
+                    , type_ "text"
+                    , value (String.fromChar char)
+                    ]
+                    []
+            )
+        , button [ onClick SubmitAttempt, disabled (List.length attempt < defaultRowLength) ] [ text "Submit" ]
+        ]
+
+
+alphabetView : List Letter -> Html Msg
 alphabetView a =
     div
         [ style "display" "flex"
@@ -156,44 +187,67 @@ alphabetView a =
         (List.map (\letter -> letterView letter) a)
 
 
-letterView : Letter -> Html msg
+backgroundColor : LetterState -> String
+backgroundColor state =
+    case state of
+        NotIncluded ->
+            "grey"
+
+        CorrectPlace ->
+            "green"
+
+        NotTried ->
+            "white"
+
+        IncorrectPlace ->
+            "orange"
+
+
+letterView : Letter -> Html Msg
 letterView letter =
     let
-        backgroundColor : String
-        backgroundColor =
-            case letter of
-                ( _, NotIncluded ) ->
-                    "grey"
-
-                ( _, CorrectPlace ) ->
-                    "green"
-
-                ( _, NotTried ) ->
-                    "white"
-
-                ( _, IncorrectPlace ) ->
-                    "orange"
+        char =
+            Tuple.first letter
     in
-    div
-        [ style "background-color" backgroundColor
-        , style "width" "1em"
-        , style "padding" "10px"
+    button
+        [ style "background-color" (backgroundColor (Tuple.second letter))
         , style "font-size" "24px"
         , style "display" "flex"
         , style "align-items" "center"
         , style "justify-content" "center"
+        , onClick (CharEntered char)
         ]
-        [ text (String.fromChar (Tuple.first letter)) ]
+        [ text (String.fromChar char) ]
 
 
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        SubmitAttempt attempt ->
-            model
+        SubmitAttempt ->
+            { model
+                | history = model.history ++ [ validateAttempt model.currentAttempt word ]
+                , currentAttempt = []
+            }
 
         CharEntered char ->
-            { model | currentAttempt = char }
+            { model | currentAttempt = model.currentAttempt ++ [ char ] }
+
+
+validateAttempt : List Char -> String -> List Letter
+validateAttempt attempt correct =
+    List.map2 (\attemptChar -> \correctChar -> ( attemptChar, validateChar attemptChar correctChar correct )) attempt (String.toList correct)
+
+
+validateChar : Char -> Char -> String -> LetterState
+validateChar attemptChar correctChar correct =
+    if attemptChar == correctChar then
+        CorrectPlace
+
+    else if String.contains (String.fromChar attemptChar) correct then
+        IncorrectPlace
+
+    else
+        NotIncluded
 
 
 main : Program () Model Msg
