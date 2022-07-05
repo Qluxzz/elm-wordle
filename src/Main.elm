@@ -4,7 +4,7 @@ import Array
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (disabled, maxlength, style, type_, value)
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onInput, onSubmit)
 
 
 
@@ -147,9 +147,10 @@ row attempt =
 
 activeRow : List Char -> Html Msg
 activeRow attempt =
-    div
+    form
         [ style "display" "flex"
         , style "gap" "10px"
+        , onSubmit SubmitAttempt
         ]
         [ rowBase defaultRowLength
             attempt
