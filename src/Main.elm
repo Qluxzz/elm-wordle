@@ -2,9 +2,11 @@ module Main exposing (main)
 
 import Array
 import Browser
+import Browser.Dom as Dom
 import Html exposing (..)
-import Html.Attributes exposing (disabled, maxlength, style, type_, value)
+import Html.Attributes exposing (disabled, id, maxlength, style, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
+import Task
 
 
 
@@ -49,6 +51,7 @@ type alias Letter =
 type Msg
     = SubmitAttempt
     | CharEntered (Maybe Char)
+    | NoOp
 
 
 initalModel : Model
@@ -109,6 +112,7 @@ rowBase rowLength attempt elem =
                         , style "font-weight" "bold"
                         , style "text-align" "center"
                         , style "width" "1em"
+                        , id ("box" ++ String.fromInt index)
                         ]
                         [ elem (arr |> Array.get index) ]
                 )
@@ -147,46 +151,64 @@ row attempt =
 
 activeRow : List Char -> Html Msg
 activeRow attempt =
+    let
+        arr =
+            Array.fromList attempt
+    in
     form
         [ style "display" "flex"
         , style "gap" "10px"
         , onSubmit SubmitAttempt
         ]
-        [ rowBase defaultRowLength
-            attempt
-            (\char ->
-                input
-                    [ maxlength 1
-                    , style "width" "1em"
-                    , style "border" "0px"
-                    , style "font-size" "32px"
-                    , style "text-align" "center"
-                    , style "text-transform" "uppercase"
-                    , type_ "text"
-                    , onInput
-                        (\str ->
-                            str
-                                |> String.toList
-                                |> List.head
-                                |> CharEntered
-                        )
-                    , value
-                        (case char of
-                            Just c ->
-                                String.fromChar c
+        ((List.range 0 (defaultRowLength - 1)
+            |> List.map
+                (\index ->
+                    div
+                        [ style "padding" "10px"
+                        , style "border" "1px solid black"
+                        , style "border-radius" "10px"
+                        , style "text-transform" "uppercase"
+                        , style "font-size" "32px"
+                        , style "font-weight" "bold"
+                        , style "text-align" "center"
+                        , style "width" "1em"
+                        ]
+                        [ input
+                            [ maxlength 1
+                            , style "width" "1em"
+                            , style "border" "0px"
+                            , style "font-size" "32px"
+                            , style "text-align" "center"
+                            , style "text-transform" "uppercase"
+                            , type_ "text"
+                            , id ("box" ++ String.fromInt index)
+                            , onInput
+                                (\str ->
+                                    str
+                                        |> String.toList
+                                        |> List.head
+                                        |> CharEntered
+                                )
+                            , value
+                                (case Array.get index arr of
+                                    Just c ->
+                                        String.fromChar c
 
-                            Nothing ->
-                                ""
-                        )
+                                    Nothing ->
+                                        ""
+                                )
+                            ]
+                            []
+                        ]
+                )
+         )
+            ++ [ button
+                    [ onClick SubmitAttempt
+                    , disabled (List.length attempt < defaultRowLength)
                     ]
-                    []
-            )
-        , button
-            [ onClick SubmitAttempt
-            , disabled (List.length attempt < defaultRowLength)
-            ]
-            [ text "Submit" ]
-        ]
+                    [ text "Submit" ]
+               ]
+        )
 
 
 backgroundColor : LetterState -> String
@@ -205,20 +227,32 @@ backgroundColor state =
             "orange"
 
 
-update : Msg -> Model -> Model
+focusInput : String -> Cmd Msg
+focusInput id =
+    Task.attempt (\_ -> NoOp) (id |> Debug.log "focus" |> Dom.focus)
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SubmitAttempt ->
-            { model
+            ( { model
                 | history = model.history ++ [ validateAttempt model.currentAttempt ]
                 , currentAttempt = []
-            }
+              }
+            , Cmd.none
+            )
 
         CharEntered (Just char) ->
-            { model | currentAttempt = model.currentAttempt ++ [ Char.toUpper char ] }
+            ( { model | currentAttempt = model.currentAttempt ++ [ Char.toUpper char ] }
+            , focusInput ("box" ++ String.fromInt (List.length model.currentAttempt + 1))
+            )
 
         CharEntered Nothing ->
-            model
+            ( model, Cmd.none )
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 validateAttempt_ : String -> List Char -> List Letter
@@ -245,8 +279,9 @@ validateChar attemptChar correctChar correct =
 
 main : Program () Model Msg
 main =
-    Browser.sandbox
-        { init = initalModel
+    Browser.element
+        { init = \_ -> ( initalModel, Cmd.none )
         , view = view
-        , update = update
+        , update = \msg -> \model -> update msg model
+        , subscriptions = \_ -> Sub.none
         }
