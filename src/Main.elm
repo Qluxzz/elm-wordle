@@ -133,6 +133,10 @@ row attempt =
         (attempt
             |> List.map
                 (\letter ->
+                    let
+                        ( char, state ) =
+                            letter
+                    in
                     div
                         [ style "padding" "10px"
                         , style "border" "1px solid black"
@@ -142,9 +146,9 @@ row attempt =
                         , style "font-weight" "bold"
                         , style "text-align" "center"
                         , style "width" "1em"
-                        , style "background-color" (backgroundColor (Tuple.second letter))
+                        , style "background-color" (backgroundColor state)
                         ]
-                        [ text (String.fromChar (Tuple.first letter)) ]
+                        [ text (String.fromChar char) ]
                 )
         )
 
@@ -229,7 +233,7 @@ backgroundColor state =
 
 focusInput : String -> Cmd Msg
 focusInput id =
-    Task.attempt (\_ -> NoOp) (id |> Debug.log "focus" |> Dom.focus)
+    Task.attempt (\_ -> NoOp) (Dom.focus id)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -244,7 +248,11 @@ update msg model =
             )
 
         CharEntered (Just char) ->
-            ( { model | currentAttempt = model.currentAttempt ++ [ Char.toUpper char ] }
+            ( if char == ' ' then
+                model
+
+              else
+                { model | currentAttempt = model.currentAttempt ++ [ Char.toUpper char ] }
             , focusInput ("box" ++ String.fromInt (List.length model.currentAttempt + 1))
             )
 
