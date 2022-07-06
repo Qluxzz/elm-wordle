@@ -240,7 +240,7 @@ update msg model =
                 | history = model.history ++ [ validateAttempt model.currentAttempt ]
                 , currentAttempt = []
               }
-            , Cmd.none
+            , focusInput "box0"
             )
 
         CharEntered (Just char) ->
