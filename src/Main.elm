@@ -83,39 +83,10 @@ view model =
         , style "gap" "10px"
         ]
         (List.map
-            row
+            historicRow
             model.history
             ++ [ activeRow model.currentAttempt
                ]
-        )
-
-
-rowBase : Int -> List Char -> (Maybe Char -> Html Msg) -> Html Msg
-rowBase rowLength attempt elem =
-    let
-        arr =
-            attempt |> Array.fromList
-    in
-    div
-        [ style "display" "flex"
-        , style "gap" "10px"
-        ]
-        (List.range 0 (rowLength - 1)
-            |> List.map
-                (\index ->
-                    div
-                        [ style "padding" "10px"
-                        , style "border" "1px solid black"
-                        , style "border-radius" "10px"
-                        , style "text-transform" "uppercase"
-                        , style "font-size" "32px"
-                        , style "font-weight" "bold"
-                        , style "text-align" "center"
-                        , style "width" "1em"
-                        , id ("box" ++ String.fromInt index)
-                        ]
-                        [ elem (arr |> Array.get index) ]
-                )
         )
 
 
@@ -124,8 +95,8 @@ defaultRowLength =
     5
 
 
-row : List Letter -> Html msg
-row attempt =
+historicRow : List Letter -> Html msg
+historicRow attempt =
     div
         [ style "display" "flex"
         , style "gap" "10px"
