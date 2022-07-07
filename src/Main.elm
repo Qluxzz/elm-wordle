@@ -32,10 +32,10 @@ type alias Attempt =
     List Letter
 
 
-type alias Model =
-    { history : List Attempt
-    , currentAttempt : List Char
-    }
+type GameState
+    = Playing
+    | Won
+    | Lost
 
 
 type LetterState
@@ -55,10 +55,18 @@ type Msg
     | NoOp
 
 
+type alias Model =
+    { history : List Attempt
+    , currentAttempt : List Char
+    , state : GameState
+    }
+
+
 initalModel : Model
 initalModel =
     { history = []
     , currentAttempt = []
+    , state = Playing
     }
 
 
@@ -68,11 +76,26 @@ initalModel =
    alphabet =
        List.range 0 25 |> List.map (\i -> Char.fromCode (65 + i))
 -}
+-- CONSTANTS
 
 
 word : String
 word =
     "guess"
+
+
+defaultRowLength : Int
+defaultRowLength =
+    5
+
+
+maxiumAttempts : Int
+maxiumAttempts =
+    6
+
+
+
+-- VIEW
 
 
 view : Model -> Html Msg
@@ -86,14 +109,17 @@ view model =
         (List.map
             historicRow
             model.history
-            ++ [ activeRow model.currentAttempt
+            ++ [ case model.state of
+                    Won ->
+                        div [ style "font-size" "32px" ] [ text "You won!" ]
+
+                    Lost ->
+                        div [ style "font-size" "32px" ] [ text ("You lost! The word was " ++ String.toUpper word) ]
+
+                    Playing ->
+                        activeRow model.currentAttempt
                ]
         )
-
-
-defaultRowLength : Int
-defaultRowLength =
-    5
 
 
 historicRow : List Letter -> Html msg
@@ -206,6 +232,10 @@ focusInput id =
     Task.attempt (\_ -> NoOp) (Dom.focus id)
 
 
+
+-- UPDATE
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -214,6 +244,15 @@ update msg model =
                 ( { model
                     | history = model.history ++ [ validateAttempt model.currentAttempt ]
                     , currentAttempt = []
+                    , state =
+                        if List.all (\( _, lS ) -> lS == CorrectPlace) (validateAttempt model.currentAttempt) then
+                            Won
+
+                        else if List.length model.history + 1 == maxiumAttempts then
+                            Lost
+
+                        else
+                            Playing
                   }
                 , focusInput "box0"
                 )
@@ -262,6 +301,10 @@ validateChar attemptChar correctChar correct =
 
     else
         NotIncluded
+
+
+
+-- MAIN
 
 
 main : Program () Model Msg
