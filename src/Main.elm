@@ -3,10 +3,11 @@ module Main exposing (main)
 import Array
 import Browser
 import Browser.Dom as Dom
-import FiveLetterWords exposing (isValidWord)
+import FiveLetterWords exposing (getRandomWord, isValidWord, wordsLength)
 import Html exposing (..)
 import Html.Attributes exposing (disabled, id, maxlength, style, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
+import Random
 import Task
 
 
@@ -33,7 +34,8 @@ type alias Attempt =
 
 
 type GameState
-    = Playing
+    = Loading
+    | Playing
     | Won
     | Lost
 
@@ -52,6 +54,7 @@ type alias Letter =
 type Msg
     = SubmitAttempt
     | CharEntered (Maybe Char)
+    | GenerateRandomIndex Int
     | NoOp
 
 
@@ -59,6 +62,7 @@ type alias Model =
     { history : List Attempt
     , currentAttempt : List Char
     , state : GameState
+    , word : String
     }
 
 
@@ -66,7 +70,8 @@ initalModel : Model
 initalModel =
     { history = []
     , currentAttempt = []
-    , state = Playing
+    , state = Loading
+    , word = ""
     }
 
 
@@ -77,11 +82,6 @@ initalModel =
        List.range 0 25 |> List.map (\i -> Char.fromCode (65 + i))
 -}
 -- CONSTANTS
-
-
-word : String
-word =
-    "guess"
 
 
 defaultRowLength : Int
@@ -114,10 +114,13 @@ view model =
                         div [ style "font-size" "32px" ] [ text "You won!" ]
 
                     Lost ->
-                        div [ style "font-size" "32px" ] [ text ("You lost! The word was " ++ String.toUpper word) ]
+                        div [ style "font-size" "32px" ] [ text ("You lost! The word was " ++ String.toUpper model.word) ]
 
                     Playing ->
                         activeRow model.currentAttempt
+
+                    Loading ->
+                        div [] [ text "Loading!" ]
                ]
         )
 
@@ -240,12 +243,16 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SubmitAttempt ->
+            let
+                validatedAttempt =
+                    validateAttempt model.word model.currentAttempt
+            in
             if isValidWord (String.fromList model.currentAttempt) then
                 ( { model
-                    | history = model.history ++ [ validateAttempt model.currentAttempt ]
+                    | history = model.history ++ [ validatedAttempt ]
                     , currentAttempt = []
                     , state =
-                        if List.all (\( _, lS ) -> lS == CorrectPlace) (validateAttempt model.currentAttempt) then
+                        if List.all (\( _, lS ) -> lS == CorrectPlace) validatedAttempt then
                             Won
 
                         else if List.length model.history + 1 == maxiumAttempts then
@@ -266,6 +273,7 @@ update msg model =
                 )
 
         CharEntered (Just char) ->
+            -- TODO: Allow backspace and arbitrary navigation between cells
             ( if char == ' ' then
                 model
 
@@ -280,15 +288,18 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
+        GenerateRandomIndex index ->
+            ( { model
+                | word = getRandomWord index |> Maybe.withDefault ""
+                , state = Playing
+              }
+            , Cmd.none
+            )
 
-validateAttempt_ : String -> List Char -> List Letter
-validateAttempt_ correct attempt =
+
+validateAttempt : String -> List Char -> List Letter
+validateAttempt correct attempt =
     List.map2 (\attemptChar -> \correctChar -> ( attemptChar, validateChar attemptChar correctChar correct )) attempt (String.toList correct)
-
-
-validateAttempt : List Char -> List Letter
-validateAttempt =
-    validateAttempt_ word
 
 
 validateChar : Char -> Char -> String -> LetterState
@@ -310,7 +321,7 @@ validateChar attemptChar correctChar correct =
 main : Program () Model Msg
 main =
     Browser.element
-        { init = \_ -> ( initalModel, Cmd.none )
+        { init = \_ -> ( initalModel, Random.generate GenerateRandomIndex (Random.int 0 wordsLength) )
         , view = view
         , update = \msg -> \model -> update msg model
         , subscriptions = \_ -> Sub.none

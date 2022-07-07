@@ -1,11 +1,26 @@
-module FiveLetterWords exposing (isValidWord)
+module FiveLetterWords exposing (getRandomWord, isValidWord, wordsLength)
 
+import Array
+import Random
 import Set exposing (Set)
 
 
 isValidWord : String -> Bool
-isValidWord word =
-    Set.member word words
+isValidWord w =
+    Set.member w words
+
+
+getRandomWord : Int -> Maybe String
+getRandomWord index =
+    words
+        |> Set.toList
+        |> Array.fromList
+        |> Array.get index
+
+
+wordsLength : Int
+wordsLength =
+    Set.size words
 
 
 words : Set String
