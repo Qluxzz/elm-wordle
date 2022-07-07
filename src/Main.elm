@@ -3,6 +3,7 @@ module Main exposing (main)
 import Array
 import Browser
 import Browser.Dom as Dom
+import FiveLetterWords exposing (isValidWord)
 import Html exposing (..)
 import Html.Attributes exposing (disabled, id, maxlength, style, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
@@ -71,7 +72,7 @@ initalModel =
 
 word : String
 word =
-    "GUESS"
+    "guess"
 
 
 view : Model -> Html Msg
@@ -142,11 +143,9 @@ activeRow attempt =
                         [ style "padding" "10px"
                         , style "border" "1px solid black"
                         , style "border-radius" "10px"
-                        , style "text-transform" "uppercase"
-                        , style "font-size" "32px"
                         , style "font-weight" "bold"
-                        , style "text-align" "center"
                         , style "width" "1em"
+                        , style "font-size" "32px"
                         ]
                         [ input
                             [ maxlength 1
@@ -211,19 +210,28 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SubmitAttempt ->
-            ( { model
-                | history = model.history ++ [ validateAttempt model.currentAttempt ]
-                , currentAttempt = []
-              }
-            , focusInput "box0"
-            )
+            if isValidWord (String.fromList model.currentAttempt) then
+                ( { model
+                    | history = model.history ++ [ validateAttempt model.currentAttempt ]
+                    , currentAttempt = []
+                  }
+                , focusInput "box0"
+                )
+
+            else
+                -- TODO: Show alert that word was invalid
+                ( { model
+                    | currentAttempt = []
+                  }
+                , Cmd.none
+                )
 
         CharEntered (Just char) ->
             ( if char == ' ' then
                 model
 
               else
-                { model | currentAttempt = model.currentAttempt ++ [ Char.toUpper char ] }
+                { model | currentAttempt = model.currentAttempt ++ [ Char.toLower char ] }
             , focusInput ("box" ++ String.fromInt (List.length model.currentAttempt + 1))
             )
 
