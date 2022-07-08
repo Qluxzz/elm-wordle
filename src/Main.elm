@@ -316,18 +316,10 @@ update msg model =
             in
             case word of
                 Just w ->
-                    ( { model
-                        | state = Playing w
-                      }
-                    , focusInput "box0"
-                    )
+                    ( { model | state = Playing w }, focusInput "box0" )
 
                 Nothing ->
-                    ( { model
-                        | state = Error "Failed to get random word"
-                      }
-                    , Cmd.none
-                    )
+                    ( { model | state = Error "Failed to get random word" }, Cmd.none )
 
 
 validateAttempt : String -> List Char -> List Letter
