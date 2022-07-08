@@ -35,9 +35,9 @@ type alias Attempt =
 
 type GameState
     = Loading
-    | Playing
-    | Won
-    | Lost
+    | Playing String
+    | Won String
+    | Lost String
 
 
 type LetterState
@@ -62,7 +62,6 @@ type alias Model =
     { history : List Attempt
     , currentAttempt : List Char
     , state : GameState
-    , word : String
     }
 
 
@@ -71,7 +70,6 @@ initalModel =
     { history = []
     , currentAttempt = []
     , state = Loading
-    , word = ""
     }
 
 
@@ -110,13 +108,13 @@ view model =
             historicRow
             model.history
             ++ [ case model.state of
-                    Won ->
+                    Won _ ->
                         div [ style "font-size" "32px" ] [ text "You won!" ]
 
-                    Lost ->
-                        div [ style "font-size" "32px" ] [ text ("You lost! The word was " ++ String.toUpper model.word) ]
+                    Lost word ->
+                        div [ style "font-size" "32px" ] [ text ("You lost! The word was " ++ String.toUpper word) ]
 
-                    Playing ->
+                    Playing _ ->
                         activeRow model.currentAttempt
 
                     Loading ->
@@ -244,8 +242,22 @@ update msg model =
     case msg of
         SubmitAttempt ->
             let
+                word =
+                    case model.state of
+                        Playing w ->
+                            w
+
+                        Won w ->
+                            w
+
+                        Lost w ->
+                            w
+
+                        Loading ->
+                            Debug.todo "Should be impossible to reach"
+
                 validatedAttempt =
-                    validateAttempt model.word model.currentAttempt
+                    validateAttempt word model.currentAttempt
             in
             if isValidWord (String.fromList model.currentAttempt) then
                 ( { model
@@ -253,13 +265,13 @@ update msg model =
                     , currentAttempt = []
                     , state =
                         if List.all (\( _, lS ) -> lS == CorrectPlace) validatedAttempt then
-                            Won
+                            Won word
 
                         else if List.length model.history + 1 == maxiumAttempts then
-                            Lost
+                            Lost word
 
                         else
-                            Playing
+                            Playing word
                   }
                 , focusInput "box0"
                 )
@@ -290,8 +302,7 @@ update msg model =
 
         GenerateRandomIndex index ->
             ( { model
-                | word = getRandomWord index |> Maybe.withDefault ""
-                , state = Playing
+                | state = Playing (getRandomWord index |> Maybe.withDefault "")
               }
             , Cmd.none
             )
