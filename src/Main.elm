@@ -183,6 +183,7 @@ activeRow attempt =
                             , style "text-transform" "uppercase"
                             , type_ "text"
                             , id ("box" ++ String.fromInt index)
+                            , autocomplete False
                             , onInput
                                 (\str ->
                                     str
@@ -281,7 +282,7 @@ update msg model =
                 ( { model
                     | currentAttempt = []
                   }
-                , Cmd.none
+                , focusInput "box0"
                 )
 
         CharEntered (Just char) ->
