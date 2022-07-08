@@ -239,6 +239,11 @@ focusInput id =
     Task.attempt (\_ -> NoOp) (Dom.focus id)
 
 
+focusFirstCell : Cmd Msg
+focusFirstCell =
+    focusInput "box0"
+
+
 
 -- UPDATE
 
@@ -282,7 +287,7 @@ update msg model =
                         else
                             Playing word
                   }
-                , focusInput "box0"
+                , focusFirstCell
                 )
 
             else
@@ -290,7 +295,7 @@ update msg model =
                 ( { model
                     | currentAttempt = []
                   }
-                , focusInput "box0"
+                , focusFirstCell
                 )
 
         CharEntered (Just char) ->
@@ -316,7 +321,7 @@ update msg model =
             in
             case word of
                 Just w ->
-                    ( { model | state = Playing w }, focusInput "box0" )
+                    ( { model | state = Playing w }, focusFirstCell )
 
                 Nothing ->
                     ( { model | state = Error "Failed to get random word" }, Cmd.none )
@@ -327,7 +332,18 @@ validateAttempt correct attempt =
     -- Check first for correct place and remove these
     -- then check for incorrect place
     -- the rest are not included
-    List.map2 (\attemptChar -> \correctChar -> ( attemptChar, validateChar attemptChar correctChar correct )) attempt (String.toList correct)
+    List.map2
+        (\attemptChar ->
+            \correctChar ->
+                ( attemptChar
+                , validateChar
+                    attemptChar
+                    correctChar
+                    correct
+                )
+        )
+        attempt
+        (String.toList correct)
 
 
 validateChar : Char -> Char -> String -> LetterState
