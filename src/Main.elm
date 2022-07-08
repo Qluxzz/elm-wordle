@@ -1,11 +1,12 @@
-module Main exposing (main)
+module Main exposing (LetterState(..), main, validateAttempt)
 
 import Array
 import Browser
 import Browser.Dom as Dom
+import Dict exposing (Dict)
 import FiveLetterWords exposing (getRandomWord, isValidWord, wordsLength)
 import Html exposing (..)
-import Html.Attributes exposing (disabled, id, maxlength, style, type_, value)
+import Html.Attributes exposing (autocomplete, disabled, id, maxlength, style, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Random
 import Task
@@ -38,6 +39,7 @@ type GameState
     | Playing String
     | Won String
     | Lost String
+    | Error String
 
 
 type LetterState
@@ -75,9 +77,9 @@ initalModel =
 
 
 {-
-   alphabet : List Char
+   alphabet : Dict Char LetterState
    alphabet =
-       List.range 0 25 |> List.map (\i -> Char.fromCode (65 + i))
+       List.range 0 25 |> List.map (\i -> Char.fromCode (97 + i)) |> List.foldl (\letter -> \acc -> Dict.insert letter NotTried acc) Dict.empty
 -}
 -- CONSTANTS
 
@@ -109,7 +111,7 @@ view model =
             model.history
             ++ [ case model.state of
                     Won _ ->
-                        div [ style "font-size" "32px" ] [ text "You won!" ]
+                        div [ style "font-size" "32px" ] [ text ("You won! You guessed the correct word in " ++ (model.history |> List.length |> String.fromInt) ++ " attempts") ]
 
                     Lost word ->
                         div [ style "font-size" "32px" ] [ text ("You lost! The word was " ++ String.toUpper word) ]
@@ -119,6 +121,9 @@ view model =
 
                     Loading ->
                         div [] [ text "Loading!" ]
+
+                    Error message ->
+                        div [] [ text message ]
                ]
         )
 
@@ -254,6 +259,9 @@ update msg model =
                         Lost w ->
                             w
 
+                        Error _ ->
+                            Debug.todo "Should be impossible to reach"
+
                         Loading ->
                             Debug.todo "Should be impossible to reach"
 
@@ -302,15 +310,31 @@ update msg model =
             ( model, Cmd.none )
 
         GenerateRandomIndex index ->
-            ( { model
-                | state = Playing (getRandomWord index |> Maybe.withDefault "")
-              }
-            , Cmd.none
-            )
+            let
+                word =
+                    getRandomWord index
+            in
+            case word of
+                Just w ->
+                    ( { model
+                        | state = Playing w
+                      }
+                    , focusInput "box0"
+                    )
+
+                Nothing ->
+                    ( { model
+                        | state = Error "Failed to get random word"
+                      }
+                    , Cmd.none
+                    )
 
 
 validateAttempt : String -> List Char -> List Letter
 validateAttempt correct attempt =
+    -- Check first for correct place and remove these
+    -- then check for incorrect place
+    -- the rest are not included
     List.map2 (\attemptChar -> \correctChar -> ( attemptChar, validateChar attemptChar correctChar correct )) attempt (String.toList correct)
 
 
