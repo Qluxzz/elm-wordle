@@ -53,7 +53,7 @@ type alias Letter =
 
 
 type Msg
-    = SubmitAttempt (List (Maybe Char))
+    = SubmitAttempt String (List (Maybe Char))
     | CharEntered Int (Maybe Char)
     | GenerateRandomIndex Int
     | NoOp
@@ -120,8 +120,8 @@ view model =
                     Lost word ->
                         div [ style "font-size" "32px" ] [ text ("You lost! The word was " ++ String.toUpper word) ]
 
-                    Playing _ ->
-                        activeRow model.currentAttempt
+                    Playing word ->
+                        activeRow word model.currentAttempt
 
                     Loading ->
                         div [] [ text "Loading!" ]
@@ -161,8 +161,8 @@ historicRow attempt =
         )
 
 
-activeRow : Array (Maybe Char) -> Html Msg
-activeRow attempt =
+activeRow : String -> Array (Maybe Char) -> Html Msg
+activeRow word attempt =
     let
         cells : List (Html Msg)
         cells =
@@ -212,7 +212,7 @@ activeRow attempt =
     form
         [ style "display" "flex"
         , style "gap" "10px"
-        , onSubmit (SubmitAttempt (attempt |> Array.toList))
+        , onSubmit (SubmitAttempt word (attempt |> Array.toList))
         ]
         (cells
             ++ [ button
@@ -270,25 +270,8 @@ focusFirstCell =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SubmitAttempt [ Just a, Just b, Just c, Just d, Just e ] ->
+        SubmitAttempt word [ Just a, Just b, Just c, Just d, Just e ] ->
             let
-                word =
-                    case model.state of
-                        Playing w ->
-                            w
-
-                        Won w ->
-                            w
-
-                        Lost w ->
-                            w
-
-                        Error _ ->
-                            Debug.todo "Should be impossible to reach"
-
-                        Loading ->
-                            Debug.todo "Should be impossible to reach"
-
                 attempt =
                     [ a, b, c, d, e ]
 
@@ -320,7 +303,7 @@ update msg model =
                 , focusFirstCell
                 )
 
-        SubmitAttempt _ ->
+        SubmitAttempt _ _ ->
             ( model, Cmd.none )
 
         CharEntered index (Just char) ->
