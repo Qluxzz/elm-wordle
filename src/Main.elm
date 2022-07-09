@@ -409,11 +409,11 @@ update msg model =
                     focusInput ("box" ++ String.fromInt (index + 1))
             in
             -- TODO: Allow backspace to remove current char
-            if charCode < aCharCode || charCode > zCharCode then
-                ( model, Cmd.none )
-
-            else if char == ' ' then
+            if char == ' ' then
                 ( model, focusNextCell )
+
+            else if charCode < aCharCode || charCode > zCharCode then
+                ( model, Cmd.none )
 
             else
                 ( { model | currentAttempt = Array.set index (Just (Char.toLower char)) model.currentAttempt }
