@@ -1,13 +1,12 @@
 module Main exposing (LetterState(..), main, validateAttempt)
 
-import Array
+import Array exposing (Array)
 import Browser
 import Browser.Dom as Dom
-import Dict exposing (Dict)
 import FiveLetterWords exposing (getRandomWord, isValidWord, wordsLength)
 import Html exposing (..)
 import Html.Attributes exposing (autocomplete, disabled, id, maxlength, style, type_, value)
-import Html.Events exposing (onClick, onInput, onSubmit)
+import Html.Events exposing (onInput, onSubmit)
 import Random
 import Task
 
@@ -54,15 +53,15 @@ type alias Letter =
 
 
 type Msg
-    = SubmitAttempt
-    | CharEntered (Maybe Char)
+    = SubmitAttempt (List (Maybe Char))
+    | CharEntered Int (Maybe Char)
     | GenerateRandomIndex Int
     | NoOp
 
 
 type alias Model =
     { history : List Attempt
-    , currentAttempt : List Char
+    , currentAttempt : Array (Maybe Char)
     , state : GameState
     }
 
@@ -70,7 +69,7 @@ type alias Model =
 initalModel : Model
 initalModel =
     { history = []
-    , currentAttempt = []
+    , currentAttempt = initRow
     , state = Loading
     }
 
@@ -92,6 +91,11 @@ defaultRowLength =
 maxiumAttempts : Int
 maxiumAttempts =
     6
+
+
+initRow : Array (Maybe Char)
+initRow =
+    Array.initialize defaultRowLength (\_ -> Nothing)
 
 
 
@@ -157,61 +161,76 @@ historicRow attempt =
         )
 
 
-activeRow : List Char -> Html Msg
+activeRow : Array (Maybe Char) -> Html Msg
 activeRow attempt =
     let
-        arr =
-            Array.fromList attempt
+        cells : List (Html Msg)
+        cells =
+            attempt
+                |> Array.indexedMap
+                    (\index ->
+                        \char ->
+                            div
+                                [ style "padding" "10px"
+                                , style "border" "1px solid black"
+                                , style "border-radius" "10px"
+                                , style "font-weight" "bold"
+                                , style "width" "1em"
+                                , style "font-size" "32px"
+                                ]
+                                [ input
+                                    [ maxlength 1
+                                    , style "width" "1em"
+                                    , style "border" "0px"
+                                    , style "font-size" "32px"
+                                    , style "text-align" "center"
+                                    , style "text-transform" "uppercase"
+                                    , type_ "text"
+                                    , id ("box" ++ String.fromInt index)
+                                    , autocomplete False
+                                    , onInput
+                                        (\str ->
+                                            str
+                                                |> String.toList
+                                                |> List.head
+                                                |> CharEntered index
+                                        )
+                                    , value
+                                        (case char of
+                                            Just c ->
+                                                String.fromChar c
+
+                                            Nothing ->
+                                                ""
+                                        )
+                                    ]
+                                    []
+                                ]
+                    )
+                |> Array.toList
     in
     form
         [ style "display" "flex"
         , style "gap" "10px"
-        , onSubmit SubmitAttempt
+        , onSubmit (SubmitAttempt (attempt |> Array.toList))
         ]
-        ((List.range 0 (defaultRowLength - 1)
-            |> List.map
-                (\index ->
-                    div
-                        [ style "padding" "10px"
-                        , style "border" "1px solid black"
-                        , style "border-radius" "10px"
-                        , style "font-weight" "bold"
-                        , style "width" "1em"
-                        , style "font-size" "32px"
-                        ]
-                        [ input
-                            [ maxlength 1
-                            , style "width" "1em"
-                            , style "border" "0px"
-                            , style "font-size" "32px"
-                            , style "text-align" "center"
-                            , style "text-transform" "uppercase"
-                            , type_ "text"
-                            , id ("box" ++ String.fromInt index)
-                            , autocomplete False
-                            , onInput
-                                (\str ->
-                                    str
-                                        |> String.toList
-                                        |> List.head
-                                        |> CharEntered
-                                )
-                            , value
-                                (case Array.get index arr of
-                                    Just c ->
-                                        String.fromChar c
-
-                                    Nothing ->
-                                        ""
-                                )
-                            ]
-                            []
-                        ]
-                )
-         )
+        (cells
             ++ [ button
-                    [ onClick SubmitAttempt
-                    , disabled (List.length attempt < defaultRowLength)
+                    [ disabled
+                        (attempt
+                            |> Array.toList
+                            |> List.all
+                                (\l ->
+                                    case l of
+                                        Just _ ->
+                                            True
+
+                                        Nothing ->
+                                            False
+                                )
+                            |> not
+                        )
+                    , type_ "submit"
                     ]
                     [ text "Submit" ]
                ]
@@ -251,7 +270,7 @@ focusFirstCell =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SubmitAttempt ->
+        SubmitAttempt [ Just a, Just b, Just c, Just d, Just e ] ->
             let
                 word =
                     case model.state of
@@ -270,13 +289,16 @@ update msg model =
                         Loading ->
                             Debug.todo "Should be impossible to reach"
 
+                attempt =
+                    [ a, b, c, d, e ]
+
                 validatedAttempt =
-                    validateAttempt word model.currentAttempt
+                    validateAttempt word (Array.fromList attempt)
             in
-            if isValidWord (String.fromList model.currentAttempt) then
+            if isValidWord (attempt |> String.fromList) then
                 ( { model
                     | history = model.history ++ [ validatedAttempt ]
-                    , currentAttempt = []
+                    , currentAttempt = initRow
                     , state =
                         if List.all (\( _, lS ) -> lS == CorrectPlace) validatedAttempt then
                             Won word
@@ -293,22 +315,25 @@ update msg model =
             else
                 -- TODO: Show alert that word was invalid
                 ( { model
-                    | currentAttempt = []
+                    | currentAttempt = initRow
                   }
                 , focusFirstCell
                 )
 
-        CharEntered (Just char) ->
+        SubmitAttempt _ ->
+            ( model, Cmd.none )
+
+        CharEntered index (Just char) ->
             -- TODO: Allow backspace and arbitrary navigation between cells
             ( if char == ' ' then
                 model
 
               else
-                { model | currentAttempt = model.currentAttempt ++ [ Char.toLower char ] }
-            , focusInput ("box" ++ String.fromInt (List.length model.currentAttempt + 1))
+                { model | currentAttempt = Array.set index (Just (Char.toLower char)) model.currentAttempt }
+            , focusInput ("box" ++ String.fromInt (index + 1))
             )
 
-        CharEntered Nothing ->
+        CharEntered _ Nothing ->
             ( model, Cmd.none )
 
         NoOp ->
@@ -327,7 +352,7 @@ update msg model =
                     ( { model | state = Error "Failed to get random word" }, Cmd.none )
 
 
-validateAttempt : String -> List Char -> List Letter
+validateAttempt : String -> Array Char -> List Letter
 validateAttempt correct attempt =
     -- Check first for correct place and remove these
     -- then check for incorrect place
@@ -342,7 +367,7 @@ validateAttempt correct attempt =
                     correct
                 )
         )
-        attempt
+        (Array.toList attempt)
         (String.toList correct)
 
 
