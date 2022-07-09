@@ -278,30 +278,31 @@ update msg model =
                 validatedAttempt =
                     validateAttempt word (Array.fromList attempt)
             in
-            if isValidWord (attempt |> String.fromList) then
-                ( { model
-                    | history = model.history ++ [ validatedAttempt ]
-                    , currentAttempt = initRow
-                    , state =
-                        if List.all (\( _, lS ) -> lS == CorrectPlace) validatedAttempt then
-                            Won word
+            case validatedAttempt of
+                Nothing ->
+                    -- TODO: Show alert that word was invalid
+                    ( { model
+                        | currentAttempt = initRow
+                      }
+                    , focusFirstCell
+                    )
 
-                        else if List.length model.history + 1 == maxiumAttempts then
-                            Lost word
+                Just validated ->
+                    ( { model
+                        | history = model.history ++ [ validated ]
+                        , currentAttempt = initRow
+                        , state =
+                            if List.all (\( _, lS ) -> lS == CorrectPlace) validated then
+                                Won word
 
-                        else
-                            Playing word
-                  }
-                , focusFirstCell
-                )
+                            else if List.length model.history + 1 == maxiumAttempts then
+                                Lost word
 
-            else
-                -- TODO: Show alert that word was invalid
-                ( { model
-                    | currentAttempt = initRow
-                  }
-                , focusFirstCell
-                )
+                            else
+                                Playing word
+                      }
+                    , focusFirstCell
+                    )
 
         SubmitAttempt _ _ ->
             ( model, Cmd.none )
@@ -335,23 +336,29 @@ update msg model =
                     ( { model | state = Error "Failed to get random word" }, Cmd.none )
 
 
-validateAttempt : String -> Array Char -> List Letter
+validateAttempt : String -> Array Char -> Maybe (List Letter)
 validateAttempt correct attempt =
     -- Check first for correct place and remove these
     -- then check for incorrect place
     -- the rest are not included
-    List.map2
-        (\attemptChar ->
-            \correctChar ->
-                ( attemptChar
-                , validateChar
-                    attemptChar
-                    correctChar
-                    correct
+    if isValidWord (attempt |> Array.toList |> String.fromList) then
+        Just
+            (List.map2
+                (\attemptChar ->
+                    \correctChar ->
+                        ( attemptChar
+                        , validateChar
+                            attemptChar
+                            correctChar
+                            correct
+                        )
                 )
-        )
-        (Array.toList attempt)
-        (String.toList correct)
+                (Array.toList attempt)
+                (String.toList correct)
+            )
+
+    else
+        Nothing
 
 
 validateChar : Char -> Char -> String -> LetterState
