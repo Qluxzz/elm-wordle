@@ -75,10 +75,20 @@ initalModel =
     }
 
 
+aCharCode : Int
+aCharCode =
+    97
+
+
+zCharCode : Int
+zCharCode =
+    aCharCode + 25
+
+
 alphabet : List Char
 alphabet =
-    List.range 0 25
-        |> List.map (\i -> Char.fromCode (97 + i))
+    List.range aCharCode zCharCode
+        |> List.map (\i -> Char.fromCode i)
 
 
 
@@ -250,6 +260,7 @@ activeRow word attempt =
                                     , onInput
                                         (\str ->
                                             str
+                                                |> String.toLower
                                                 |> String.toList
                                                 |> List.head
                                                 |> CharEntered index
@@ -390,14 +401,24 @@ update msg model =
             ( model, Cmd.none )
 
         CharEntered index (Just char) ->
-            -- TODO: Allow backspace to remove current char
-            ( if char == ' ' then
-                model
+            let
+                charCode =
+                    Char.toCode char
 
-              else
-                { model | currentAttempt = Array.set index (Just (Char.toLower char)) model.currentAttempt }
-            , focusInput ("box" ++ String.fromInt (index + 1))
-            )
+                focusNextCell =
+                    focusInput ("box" ++ String.fromInt (index + 1))
+            in
+            -- TODO: Allow backspace to remove current char
+            if charCode < aCharCode || charCode > zCharCode then
+                ( model, Cmd.none )
+
+            else if char == ' ' then
+                ( model, focusNextCell )
+
+            else
+                ( { model | currentAttempt = Array.set index (Just (Char.toLower char)) model.currentAttempt }
+                , focusNextCell
+                )
 
         CharEntered _ Nothing ->
             ( model, Cmd.none )
