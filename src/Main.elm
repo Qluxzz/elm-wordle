@@ -74,12 +74,13 @@ initalModel =
     }
 
 
+alphabet : List Char
+alphabet =
+    List.range 0 25
+        |> List.map (\i -> Char.fromCode (97 + i))
 
-{-
-   alphabet : Dict Char LetterState
-   alphabet =
-       List.range 0 25 |> List.map (\i -> Char.fromCode (97 + i)) |> List.foldl (\letter -> \acc -> Dict.insert letter NotTried acc) Dict.empty
--}
+
+
 -- CONSTANTS
 
 
@@ -128,7 +129,64 @@ view model =
 
                     Error message ->
                         div [] [ text message ]
+               , keyboardView model.history
                ]
+        )
+
+
+letterState : Char -> List Letter -> LetterState
+letterState char letters =
+    let
+        states =
+            letters
+                |> List.filterMap
+                    (\( c, s ) ->
+                        if c == char then
+                            Just s
+
+                        else
+                            Nothing
+                    )
+    in
+    if List.member CorrectPlace states then
+        CorrectPlace
+
+    else if List.member IncorrectPlace states then
+        IncorrectPlace
+
+    else if List.member NotIncluded states then
+        NotIncluded
+
+    else
+        NotTried
+
+
+keyboardView : List Attempt -> Html Msg
+keyboardView attempts =
+    let
+        letterList : List Letter
+        letterList =
+            List.concat attempts
+
+        updatedAlphabet : List ( Char, LetterState )
+        updatedAlphabet =
+            List.map (\k -> ( k, letterState k letterList )) alphabet
+    in
+    div
+        [ style "display" "flex"
+        , style "flex-wrap" "wrap"
+        , style "gap" "10px"
+        ]
+        (updatedAlphabet
+            |> List.map
+                (\( char, state ) ->
+                    button
+                        [ style "background-color" (backgroundColor state)
+                        , style "font-size" "32px"
+                        , style "width" "2em"
+                        ]
+                        [ text (char |> Char.toUpper |> String.fromChar) ]
+                )
         )
 
 
