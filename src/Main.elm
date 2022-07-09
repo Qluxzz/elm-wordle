@@ -6,7 +6,7 @@ import Browser.Dom as Dom
 import FiveLetterWords exposing (getRandomWord, isValidWord, wordsLength)
 import Html exposing (..)
 import Html.Attributes exposing (autocomplete, disabled, id, maxlength, style, type_, value)
-import Html.Events exposing (onInput, onSubmit)
+import Html.Events exposing (onClick, onInput, onSubmit)
 import Random
 import Task
 
@@ -55,6 +55,7 @@ type alias Letter =
 type Msg
     = SubmitAttempt String (List (Maybe Char))
     | CharEntered Int (Maybe Char)
+    | ClearAttempt
     | GenerateRandomIndex Int
     | NoOp
 
@@ -266,6 +267,36 @@ activeRow word attempt =
                                 ]
                     )
                 |> Array.toList
+
+        attemptList : List (Maybe Char)
+        attemptList =
+            Array.toList attempt
+
+        canClearAttempt : Bool
+        canClearAttempt =
+            List.any
+                (\cell ->
+                    case cell of
+                        Just _ ->
+                            True
+
+                        Nothing ->
+                            False
+                )
+                attemptList
+
+        canSubmitAttempt : Bool
+        canSubmitAttempt =
+            List.all
+                (\cell ->
+                    case cell of
+                        Just _ ->
+                            True
+
+                        Nothing ->
+                            False
+                )
+                attemptList
     in
     form
         [ style "display" "flex"
@@ -274,23 +305,16 @@ activeRow word attempt =
         ]
         (cells
             ++ [ button
-                    [ disabled
-                        (attempt
-                            |> Array.toList
-                            |> List.all
-                                (\l ->
-                                    case l of
-                                        Just _ ->
-                                            True
-
-                                        Nothing ->
-                                            False
-                                )
-                            |> not
-                        )
+                    [ disabled (not canSubmitAttempt)
                     , type_ "submit"
                     ]
                     [ text "Submit" ]
+               , button
+                    [ disabled (not canClearAttempt)
+                    , onClick ClearAttempt
+                    ]
+                    [ text "Clear"
+                    ]
                ]
         )
 
@@ -392,6 +416,9 @@ update msg model =
 
                 Nothing ->
                     ( { model | state = Error "Failed to get random word" }, Cmd.none )
+
+        ClearAttempt ->
+            ( { model | currentAttempt = initRow }, focusFirstCell )
 
 
 validateAttempt : String -> Array Char -> Maybe (List Letter)
