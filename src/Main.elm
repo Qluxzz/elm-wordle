@@ -70,7 +70,7 @@ type alias Model =
 initalModel : Model
 initalModel =
     { history = []
-    , currentAttempt = initRow
+    , currentAttempt = emptyRow
     , state = Loading
     }
 
@@ -105,8 +105,8 @@ maxiumAttempts =
     6
 
 
-initRow : Array (Maybe Char)
-initRow =
+emptyRow : Array (Maybe Char)
+emptyRow =
     Array.initialize defaultRowLength (\_ -> Nothing)
 
 
@@ -375,7 +375,7 @@ update msg model =
                 Nothing ->
                     -- TODO: Show alert that word was invalid
                     ( { model
-                        | currentAttempt = initRow
+                        | currentAttempt = emptyRow
                       }
                     , focusFirstCell
                     )
@@ -383,7 +383,7 @@ update msg model =
                 Just validated ->
                     ( { model
                         | history = model.history ++ [ validated ]
-                        , currentAttempt = initRow
+                        , currentAttempt = emptyRow
                         , state =
                             if List.all (\( _, lS ) -> lS == CorrectPlace) validated then
                                 Won word
@@ -439,7 +439,7 @@ update msg model =
                     ( { model | state = Error "Failed to get random word" }, Cmd.none )
 
         ClearAttempt ->
-            ( { model | currentAttempt = initRow }, focusFirstCell )
+            ( { model | currentAttempt = emptyRow }, focusFirstCell )
 
 
 validateAttempt : String -> Array Char -> Maybe (List Letter)
