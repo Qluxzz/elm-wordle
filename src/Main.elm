@@ -324,7 +324,7 @@ update msg model =
             ( model, Cmd.none )
 
         CharEntered index (Just char) ->
-            -- TODO: Allow backspace and arbitrary navigation between cells
+            -- TODO: Allow backspace to remove current char
             ( if char == ' ' then
                 model
 
