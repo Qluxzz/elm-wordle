@@ -255,7 +255,7 @@ activeRow word attempt =
                                     , style "text-align" "center"
                                     , style "text-transform" "uppercase"
                                     , type_ "text"
-                                    , id ("box" ++ String.fromInt index)
+                                    , id ("cell" ++ String.fromInt index)
                                     , autocomplete False
                                     , onInput
                                         (\str ->
@@ -353,7 +353,7 @@ focusInput id =
 
 focusFirstCell : Cmd Msg
 focusFirstCell =
-    focusInput "box0"
+    focusInput "cell0"
 
 
 
@@ -406,7 +406,7 @@ update msg model =
                     Char.toCode char
 
                 focusNextCell =
-                    focusInput ("box" ++ String.fromInt (index + 1))
+                    focusInput ("cell" ++ String.fromInt (index + 1))
             in
             -- TODO: Allow backspace to remove current char
             if char == ' ' then
