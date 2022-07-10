@@ -369,7 +369,7 @@ update msg model =
                     [ a, b, c, d, e ]
 
                 validatedAttempt =
-                    validateAttempt word (Array.fromList attempt)
+                    validateAttempt word attempt
             in
             case validatedAttempt of
                 Nothing ->
@@ -442,12 +442,12 @@ update msg model =
             ( { model | currentAttempt = emptyRow }, focusFirstCell )
 
 
-validateAttempt : String -> Array Char -> Maybe (List Letter)
+validateAttempt : String -> List Char -> Maybe (List Letter)
 validateAttempt correct attempt =
     -- Check first for correct place and remove these
     -- then check for incorrect place
     -- the rest are not included
-    if isValidWord (attempt |> Array.toList |> String.fromList) then
+    if isValidWord (String.fromList attempt) then
         Just
             (List.map2
                 (\attemptChar ->
@@ -459,7 +459,7 @@ validateAttempt correct attempt =
                             correct
                         )
                 )
-                (Array.toList attempt)
+                attempt
                 (String.toList correct)
             )
 
