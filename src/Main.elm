@@ -485,9 +485,13 @@ validateChar attemptChar correctChar correct =
 
 main : Program () Model Msg
 main =
-    Browser.element
+    Browser.document
         { init = \_ -> ( initalModel, Random.generate GenerateRandomIndex (Random.int 0 wordsLength) )
-        , view = view
+        , view =
+            \model ->
+                { title = "Wordle"
+                , body = [ view model ]
+                }
         , update = \msg -> \model -> update msg model
         , subscriptions = \_ -> Sub.none
         }
