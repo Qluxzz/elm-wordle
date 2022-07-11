@@ -172,6 +172,14 @@ letterState char letters =
         NotTried
 
 
+qwerty : List (List Char)
+qwerty =
+    [ [ 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p' ]
+    , [ 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l' ]
+    , [ 'z', 'x', 'c', 'v', 'b', 'n', 'm' ]
+    ]
+
+
 keyboardView : List Attempt -> Html Msg
 keyboardView attempts =
     let
@@ -179,24 +187,38 @@ keyboardView attempts =
         letterList =
             List.concat attempts
 
-        updatedAlphabet : List ( Char, LetterState )
+        updatedAlphabet : Dict Char LetterState
         updatedAlphabet =
-            List.map (\k -> ( k, letterState k letterList )) alphabet
+            List.foldl (\k -> \acc -> Dict.insert k (letterState k letterList) acc) Dict.empty alphabet
     in
     div
         [ style "display" "flex"
+        , style "flex-direction" "column"
         , style "flex-wrap" "wrap"
         , style "gap" "10px"
+        , style "justify-content" "center"
         ]
-        (updatedAlphabet
+        (qwerty
             |> List.map
-                (\( char, state ) ->
-                    button
-                        [ style "background-color" (backgroundColor state)
-                        , style "font-size" "32px"
-                        , style "width" "2em"
+                (\row ->
+                    div
+                        [ style "display" "flex"
+                        , style "gap" "10px"
+                        , style "justify-content" "center"
                         ]
-                        [ text (char |> Char.toUpper |> String.fromChar) ]
+                        (row
+                            |> List.map
+                                (\char ->
+                                    button
+                                        [ style "background-color" (backgroundColor (Maybe.withDefault NotTried (Dict.get char updatedAlphabet)))
+                                        , style "font-size" "100%"
+                                        , style "flex-grow" "0"
+                                        , style "flex-shrink" "1"
+                                        , style "flex-basis" "50px"
+                                        ]
+                                        [ text (char |> Char.toUpper |> String.fromChar) ]
+                                )
+                        )
                 )
         )
 
