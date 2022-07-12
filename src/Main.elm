@@ -468,7 +468,10 @@ update msg model =
 
 validateAttempt : String -> List Char -> Maybe (List Letter)
 validateAttempt correct attempt =
-    if isValidWord (String.fromList attempt) then
+    if not (isValidWord (String.fromList attempt)) then
+        Nothing
+
+    else
         let
             remainingLettersExcludingCorrectPlace : Set Char
             remainingLettersExcludingCorrectPlace =
@@ -502,9 +505,6 @@ validateAttempt correct attempt =
                 attempt
                 (String.toList correct)
             )
-
-    else
-        Nothing
 
 
 
