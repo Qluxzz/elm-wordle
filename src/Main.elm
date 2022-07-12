@@ -3,11 +3,13 @@ module Main exposing (LetterState(..), main, validateAttempt)
 import Array exposing (Array)
 import Browser
 import Browser.Dom as Dom
+import Dict exposing (Dict)
 import FiveLetterWords exposing (getRandomWord, isValidWord, wordsLength)
 import Html exposing (..)
 import Html.Attributes exposing (autocomplete, disabled, id, maxlength, style, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Random
+import Set exposing (Set)
 import Task
 
 
@@ -466,19 +468,35 @@ update msg model =
 
 validateAttempt : String -> List Char -> Maybe (List Letter)
 validateAttempt correct attempt =
-    -- Check first for correct place and remove these
-    -- then check for incorrect place
-    -- the rest are not included
     if isValidWord (String.fromList attempt) then
+        let
+            remainingLettersExcludingCorrectPlace : Set Char
+            remainingLettersExcludingCorrectPlace =
+                List.foldl
+                    (\( correctChar, attemptChar ) ->
+                        \acc ->
+                            if correctChar /= attemptChar then
+                                Set.insert correctChar acc
+
+                            else
+                                acc
+                    )
+                    Set.empty
+                    (List.map2 Tuple.pair (String.toList correct) attempt)
+        in
         Just
             (List.map2
                 (\attemptChar ->
                     \correctChar ->
                         ( attemptChar
-                        , validateChar
-                            attemptChar
-                            correctChar
-                            correct
+                        , if attemptChar == correctChar then
+                            CorrectPlace
+
+                          else if Set.member attemptChar remainingLettersExcludingCorrectPlace then
+                            IncorrectPlace
+
+                          else
+                            NotIncluded
                         )
                 )
                 attempt
@@ -487,18 +505,6 @@ validateAttempt correct attempt =
 
     else
         Nothing
-
-
-validateChar : Char -> Char -> String -> LetterState
-validateChar attemptChar correctChar correct =
-    if attemptChar == correctChar then
-        CorrectPlace
-
-    else if String.contains (String.fromChar attemptChar) correct then
-        IncorrectPlace
-
-    else
-        NotIncluded
 
 
 
