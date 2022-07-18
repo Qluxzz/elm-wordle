@@ -59,7 +59,7 @@ type Msg
     | CharEntered Int (Maybe Char)
     | ClearAttempt
     | GenerateRandomIndex Int
-    | NoOp
+    | FocusedInput
 
 
 type alias Model =
@@ -372,7 +372,7 @@ backgroundColor state =
 
 focusInput : String -> Cmd Msg
 focusInput id =
-    Task.attempt (\_ -> NoOp) (Dom.focus id)
+    Task.attempt (\_ -> FocusedInput) (Dom.focus id)
 
 
 focusFirstCell : Cmd Msg
@@ -447,7 +447,7 @@ update msg model =
         CharEntered _ Nothing ->
             ( model, Cmd.none )
 
-        NoOp ->
+        FocusedInput ->
             ( model, Cmd.none )
 
         GenerateRandomIndex index ->
