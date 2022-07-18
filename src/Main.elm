@@ -1,4 +1,4 @@
-module Main exposing (LetterState(..), main, validateAttempt)
+module Main exposing (LetterState(..), compareWords, main)
 
 import Array exposing (Array)
 import Browser
@@ -9,7 +9,6 @@ import Html exposing (..)
 import Html.Attributes exposing (autocomplete, disabled, id, maxlength, style, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Random
-import Set exposing (Set)
 import Task
 
 
@@ -472,39 +471,75 @@ validateAttempt correct attempt =
         Nothing
 
     else
-        let
-            remainingLettersExcludingCorrectPlace : Set Char
-            remainingLettersExcludingCorrectPlace =
-                List.foldl
-                    (\( correctChar, attemptChar ) ->
-                        \acc ->
-                            if correctChar /= attemptChar then
-                                Set.insert correctChar acc
+        Just (compareWords correct attempt)
 
-                            else
-                                acc
-                    )
-                    Set.empty
-                    (List.map2 Tuple.pair (String.toList correct) attempt)
-        in
-        Just
-            (List.map2
-                (\attemptChar ->
-                    \correctChar ->
-                        ( attemptChar
-                        , if attemptChar == correctChar then
-                            CorrectPlace
 
-                          else if Set.member attemptChar remainingLettersExcludingCorrectPlace then
-                            IncorrectPlace
+compareWords : String -> List Char -> List Letter
+compareWords correct attempt =
+    let
+        letterCountInit : Dict Char Int
+        letterCountInit =
+            List.foldl
+                (\char ->
+                    \acc ->
+                        Dict.update
+                            char
+                            (\mV ->
+                                Just
+                                    (case mV of
+                                        Just v ->
+                                            v + 1
 
-                          else
-                            NotIncluded
+                                        Nothing ->
+                                            1
+                                    )
+                            )
+                            acc
+                )
+                Dict.empty
+                (String.toList correct)
+
+        decreaseCount : Char -> Dict Char Int -> Dict Char Int
+        decreaseCount char dict =
+            Dict.update
+                char
+                (\mV ->
+                    Just
+                        (case mV of
+                            Just v ->
+                                Basics.max 0 (v - 1)
+
+                            Nothing ->
+                                0
                         )
                 )
-                attempt
-                (String.toList correct)
+                dict
+
+        charRemains : Char -> Dict Char Int -> Bool
+        charRemains char dict =
+            case Dict.get char dict of
+                Just v ->
+                    v > 0
+
+                Nothing ->
+                    False
+    in
+    Tuple.second
+        (List.foldl
+            (\( correctChar, attemptChar ) ->
+                \( letterCount, result ) ->
+                    if correctChar == attemptChar then
+                        ( decreaseCount correctChar letterCount, result ++ [ ( attemptChar, CorrectPlace ) ] )
+
+                    else if charRemains attemptChar letterCount then
+                        ( decreaseCount attemptChar letterCount, result ++ [ ( attemptChar, IncorrectPlace ) ] )
+
+                    else
+                        ( letterCount, result ++ [ ( attemptChar, NotIncluded ) ] )
             )
+            ( letterCountInit, [] )
+            (List.map2 Tuple.pair (String.toList correct) attempt)
+        )
 
 
 
