@@ -7,7 +7,7 @@ import Dict exposing (Dict)
 import FiveLetterWords exposing (getRandomWord, isValidWord, wordsLength)
 import Html exposing (..)
 import Html.Attributes exposing (autocomplete, disabled, id, maxlength, style, type_, value)
-import Html.Events exposing (onClick, onInput, onSubmit)
+import Html.Events exposing (onClick, onFocus, onInput, onSubmit)
 import Random
 import Task
 
@@ -58,13 +58,14 @@ type Msg
     | CharEntered Int (Maybe Char)
     | ClearAttempt
     | GenerateRandomIndex Int
-    | FocusedInput
+    | FocusedInput Int
 
 
 type alias Model =
     { history : List Attempt
     , currentAttempt : Array (Maybe Char)
     , state : GameState
+    , selectedCell : Int
     }
 
 
@@ -73,6 +74,7 @@ initalModel =
     { history = []
     , currentAttempt = emptyRow
     , state = Loading
+    , selectedCell = 0
     }
 
 
@@ -141,7 +143,7 @@ view model =
 
                     Error message ->
                         div [] [ text message ]
-               , keyboardView model.history
+               , keyboardView model.history model.selectedCell
                ]
         )
 
@@ -181,8 +183,8 @@ qwerty =
     ]
 
 
-keyboardView : List Attempt -> Html Msg
-keyboardView attempts =
+keyboardView : List Attempt -> Int -> Html Msg
+keyboardView attempts focusedCellId =
     let
         letterList : List Letter
         letterList =
@@ -216,6 +218,7 @@ keyboardView attempts =
                                         , style "flex-grow" "0"
                                         , style "flex-shrink" "1"
                                         , style "flex-basis" "50px"
+                                        , onClick (CharEntered focusedCellId (Just char))
                                         ]
                                         [ text (char |> Char.toUpper |> String.fromChar) ]
                                 )
@@ -280,6 +283,7 @@ activeRow word attempt =
                                     , type_ "text"
                                     , id ("cell" ++ String.fromInt index)
                                     , autocomplete False
+                                    , onFocus (FocusedInput index)
                                     , onInput
                                         (\str ->
                                             str
@@ -370,14 +374,14 @@ backgroundColor state =
             "orange"
 
 
-focusInput : String -> Cmd Msg
-focusInput id =
-    Task.attempt (\_ -> FocusedInput) (Dom.focus id)
+focusCell : Int -> Cmd Msg
+focusCell id =
+    Task.attempt (\_ -> FocusedInput id) (Dom.focus ("cell" ++ String.fromInt id))
 
 
 focusFirstCell : Cmd Msg
 focusFirstCell =
-    focusInput "cell0"
+    focusCell 0
 
 
 
@@ -430,7 +434,7 @@ update msg model =
                     Char.toCode char
 
                 focusNextCell =
-                    focusInput ("cell" ++ String.fromInt (index + 1))
+                    focusCell (index + 1)
             in
             -- TODO: Allow backspace to remove current char
             if char == ' ' then
@@ -447,8 +451,8 @@ update msg model =
         CharEntered _ Nothing ->
             ( model, Cmd.none )
 
-        FocusedInput ->
-            ( model, Cmd.none )
+        FocusedInput cellId ->
+            ( { model | selectedCell = cellId }, Cmd.none )
 
         GenerateRandomIndex index ->
             let
