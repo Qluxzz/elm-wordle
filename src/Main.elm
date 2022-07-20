@@ -346,6 +346,7 @@ activeRow word attempt =
                , button
                     [ disabled (not canClearAttempt)
                     , onClick ClearAttempt
+                    , type_ "button"
                     ]
                     [ text "Clear"
                     ]
