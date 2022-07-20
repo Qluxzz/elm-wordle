@@ -479,7 +479,7 @@ compareWords correct attempt =
     let
         letterCountInit : Dict Char Int
         letterCountInit =
-            List.foldl
+            String.foldl
                 (\char ->
                     \acc ->
                         Dict.update
@@ -497,7 +497,7 @@ compareWords correct attempt =
                             acc
                 )
                 Dict.empty
-                (String.toList correct)
+                correct
 
         decreaseCount : Char -> Dict Char Int -> Dict Char Int
         decreaseCount char dict =
