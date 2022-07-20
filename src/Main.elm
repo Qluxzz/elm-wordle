@@ -552,7 +552,7 @@ main =
         { init = \_ -> ( initalModel, Random.generate GenerateRandomIndex (Random.int 0 wordsLength) )
         , view =
             \model ->
-                { title = "Wordle"
+                { title = "ELM Wordle"
                 , body = [ view model ]
                 }
         , update = \msg -> \model -> update msg model
