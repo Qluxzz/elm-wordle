@@ -57,6 +57,7 @@ type Msg
     = SubmitAttempt String (List (Maybe Char))
     | CharEntered Int (Maybe Char)
     | ClearAttempt
+    | StartNewGame
     | GenerateRandomIndex Int
     | FocusedInput Int
 
@@ -119,6 +120,11 @@ emptyRow =
 
 view : Model -> Html Msg
 view model =
+    let
+        playAgainButton : Html Msg
+        playAgainButton =
+            button [ onClick StartNewGame ] [ text "Play again!" ]
+    in
     div
         [ style "padding" "10px"
         , style "display" "flex"
@@ -130,10 +136,23 @@ view model =
             model.history
             ++ [ case model.state of
                     Won _ ->
-                        div [ style "font-size" "32px" ] [ text ("You won! You guessed the correct word in " ++ (model.history |> List.length |> String.fromInt) ++ " attempts") ]
+                        let
+                            attempts : String
+                            attempts =
+                                model.history
+                                    |> List.length
+                                    |> String.fromInt
+                        in
+                        div [ style "font-size" "32px" ]
+                            [ p [] [ text ("You won! You guessed the correct word in " ++ attempts ++ " attempts") ]
+                            , playAgainButton
+                            ]
 
                     Lost word ->
-                        div [ style "font-size" "32px" ] [ text ("You lost! The word was " ++ String.toUpper word) ]
+                        div [ style "font-size" "32px" ]
+                            [ p [] [ text ("You lost! The word was " ++ String.toUpper word) ]
+                            , playAgainButton
+                            ]
 
                     Playing word ->
                         activeRow word model.currentAttempt
@@ -468,6 +487,9 @@ update msg model =
 
         ClearAttempt ->
             ( { model | currentAttempt = emptyRow }, focusFirstCell )
+
+        StartNewGame ->
+            ( initalModel, Random.generate GenerateRandomIndex (Random.int 0 wordsLength) )
 
 
 validateAttempt : String -> List Char -> Maybe (List Letter)
