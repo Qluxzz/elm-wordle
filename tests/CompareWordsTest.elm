@@ -1,4 +1,4 @@
-module ValidateAttempt exposing (..)
+module CompareWordsTest exposing (suite)
 
 import Expect
 import Main exposing (LetterState(..), compareWords)
@@ -17,6 +17,16 @@ suite =
                         , ( 'm', NotIncluded )
                         , ( 'a', NotIncluded )
                         , ( 'n', NotIncluded )
+                        ]
+        , test "another valid result" <|
+            \_ ->
+                compareWords "zooms" ("guess" |> String.toList)
+                    |> Expect.equal
+                        [ ( 'g', NotIncluded )
+                        , ( 'u', NotIncluded )
+                        , ( 'e', NotIncluded )
+                        , ( 's', NotIncluded )
+                        , ( 's', CorrectPlace )
                         ]
         , describe "multiple of same letter"
             [ test "one correct place and one incorrect place" <|
