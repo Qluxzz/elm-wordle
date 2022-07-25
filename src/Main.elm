@@ -504,27 +504,38 @@ validateAttempt correct attempt =
 compareWords : String -> List Char -> List Letter
 compareWords correct attempt =
     let
-        letterCountInit : Dict Char Int
-        letterCountInit =
-            String.foldl
-                (\char ->
-                    \acc ->
-                        Dict.update
-                            char
-                            (\mV ->
-                                Just
-                                    (case mV of
-                                        Just v ->
-                                            v + 1
+        wordCharCount : Dict Char Int
+        wordCharCount =
+            List.foldl
+                (\( correctChar, attemptChar ) ->
+                    \c ->
+                        if correctChar == attemptChar then
+                            decreaseCount correctChar c
 
-                                        Nothing ->
-                                            1
-                                    )
-                            )
-                            acc
+                        else
+                            c
                 )
-                Dict.empty
-                correct
+                (String.foldl
+                    (\char ->
+                        \acc ->
+                            Dict.update
+                                char
+                                (\mV ->
+                                    Just
+                                        (case mV of
+                                            Just v ->
+                                                v + 1
+
+                                            Nothing ->
+                                                1
+                                        )
+                                )
+                                acc
+                    )
+                    Dict.empty
+                    correct
+                )
+                (List.map2 Tuple.pair (String.toList correct) attempt)
 
         decreaseCount : Char -> Dict Char Int -> Dict Char Int
         decreaseCount char dict =
@@ -554,17 +565,17 @@ compareWords correct attempt =
     Tuple.second
         (List.foldl
             (\( correctChar, attemptChar ) ->
-                \( letterCount, result ) ->
+                \( count, result ) ->
                     if correctChar == attemptChar then
-                        ( decreaseCount correctChar letterCount, result ++ [ ( attemptChar, CorrectPlace ) ] )
+                        ( count, result ++ [ ( attemptChar, CorrectPlace ) ] )
 
-                    else if charRemains attemptChar letterCount then
-                        ( decreaseCount attemptChar letterCount, result ++ [ ( attemptChar, IncorrectPlace ) ] )
+                    else if charRemains attemptChar count then
+                        ( decreaseCount attemptChar count, result ++ [ ( attemptChar, IncorrectPlace ) ] )
 
                     else
-                        ( letterCount, result ++ [ ( attemptChar, NotIncluded ) ] )
+                        ( count, result ++ [ ( attemptChar, NotIncluded ) ] )
             )
-            ( letterCountInit, [] )
+            ( wordCharCount, [] )
             (List.map2 Tuple.pair (String.toList correct) attempt)
         )
 
