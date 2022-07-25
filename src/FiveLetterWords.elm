@@ -1,7 +1,6 @@
 module FiveLetterWords exposing (getRandomWord, isValidWord, wordsLength)
 
 import Array
-import Random
 import Set exposing (Set)
 
 
