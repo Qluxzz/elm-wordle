@@ -414,11 +414,8 @@ update msg model =
             let
                 attempt =
                     [ a, b, c, d, e ]
-
-                validatedAttempt =
-                    validateAttempt word attempt
             in
-            case validatedAttempt of
+            case validateAttempt word attempt of
                 Nothing ->
                     -- TODO: Show alert that word was invalid
                     ( { model
