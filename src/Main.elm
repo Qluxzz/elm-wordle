@@ -31,10 +31,6 @@ type State
     | Error String
 
 
-type GameState
-    = String
-
-
 type Msg
     = StartNewGame
     | GenerateRandomIndex Int
