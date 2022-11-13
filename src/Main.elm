@@ -89,15 +89,11 @@ update msg model =
                     ( model, Cmd.none )
 
         GenerateRandomIndex index ->
-            let
-                word =
-                    getRandomWord index
-            in
-            case word of
-                Just w ->
+            case getRandomWord index of
+                Just word ->
                     let
                         ( gameModel, cmd ) =
-                            Game.init w
+                            Game.init word
                     in
                     ( { model | state = Playing gameModel }, Cmd.map (\c -> Game c) cmd )
 
