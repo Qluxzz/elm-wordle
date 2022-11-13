@@ -6,7 +6,7 @@ import Browser.Dom as Dom
 import Dict exposing (Dict)
 import FiveLetterWords exposing (getRandomWord, isValidWord, wordsLength)
 import Html exposing (..)
-import Html.Attributes exposing (autocomplete, disabled, id, maxlength, style, type_, value)
+import Html.Attributes exposing (autocomplete, class, disabled, id, maxlength, style, type_, value)
 import Html.Events exposing (onClick, onFocus, onInput, onSubmit)
 import Random
 import Task
@@ -118,53 +118,51 @@ emptyRow =
 -- VIEW
 
 
-view : Model -> Html Msg
+view : Model -> List (Html Msg)
 view model =
     let
         playAgainButton : Html Msg
         playAgainButton =
             button [ onClick StartNewGame ] [ text "Play again!" ]
     in
-    div
-        [ style "padding" "10px"
-        , style "display" "flex"
-        , style "flex-direction" "column"
-        , style "gap" "10px"
-        ]
-        (List.map
-            historicRow
-            model.history
-            ++ [ case model.state of
-                    Won _ ->
-                        let
-                            attempts : String
-                            attempts =
-                                model.history
-                                    |> List.length
-                                    |> String.fromInt
-                        in
-                        div [ style "font-size" "32px" ]
-                            [ p [] [ text ("You won! You guessed the correct word in " ++ attempts ++ " attempts") ]
-                            , playAgainButton
-                            ]
+    [ case model.state of
+        Won _ ->
+            let
+                attempts : String
+                attempts =
+                    model.history
+                        |> List.length
+                        |> String.fromInt
+            in
+            div [ style "font-size" "32px" ]
+                [ p [] [ text ("You won! You guessed the correct word in " ++ attempts ++ " attempts") ]
+                , playAgainButton
+                ]
 
-                    Lost word ->
-                        div [ style "font-size" "32px" ]
-                            [ p [] [ text ("You lost! The word was " ++ String.toUpper word) ]
-                            , playAgainButton
-                            ]
+        Lost word ->
+            div [ style "font-size" "32px" ]
+                [ p [] [ text ("You lost! The word was " ++ String.toUpper word) ]
+                , playAgainButton
+                ]
 
-                    Playing word ->
-                        activeRow word model.currentAttempt
+        Playing word ->
+            div [ class "game" ]
+                [ div
+                    [ class "rows" ]
+                    (List.map
+                        historicRow
+                        model.history
+                        ++ [ activeRow word model.currentAttempt ]
+                    )
+                , keyboardView model.history model.currentAttempt word model.selectedCell
+                ]
 
-                    Loading ->
-                        div [] [ text "Loading!" ]
+        Loading ->
+            div [] [ text "Loading!" ]
 
-                    Error message ->
-                        div [] [ text message ]
-               , keyboardView model.history model.selectedCell
-               ]
-        )
+        Error message ->
+            div [] [ text message ]
+    ]
 
 
 letterState : Char -> List Letter -> LetterState
@@ -202,56 +200,94 @@ qwerty =
     ]
 
 
-keyboardView : List Attempt -> Int -> Html Msg
-keyboardView attempts focusedCellId =
+keyboardView : List Attempt -> Array (Maybe Char) -> String -> Int -> Html Msg
+keyboardView historicAttempts activeAttempt word focusedCellId =
     let
         letterList : List Letter
         letterList =
-            List.concat attempts
+            List.concat historicAttempts
 
         updatedAlphabet : Dict Char LetterState
         updatedAlphabet =
             List.foldl (\k -> \acc -> Dict.insert k (letterState k letterList) acc) Dict.empty alphabet
-    in
-    div
-        [ style "display" "flex"
-        , style "flex-direction" "column"
-        , style "flex-wrap" "wrap"
-        , style "gap" "10px"
-        , style "justify-content" "center"
-        ]
-        (qwerty
-            |> List.map
-                (\row ->
-                    div
-                        [ style "display" "flex"
-                        , style "gap" "10px"
-                        , style "justify-content" "center"
-                        ]
-                        (row
-                            |> List.map
-                                (\char ->
-                                    button
-                                        [ style "background-color" (backgroundColor (Maybe.withDefault NotTried (Dict.get char updatedAlphabet)))
-                                        , style "font-size" "100%"
-                                        , style "flex-grow" "0"
-                                        , style "flex-shrink" "1"
-                                        , style "flex-basis" "50px"
-                                        , onClick (CharEntered focusedCellId (Just char))
-                                        ]
-                                        [ text (char |> Char.toUpper |> String.fromChar) ]
-                                )
-                        )
+
+        row : List Char -> List (Html Msg)
+        row letters =
+            letters
+                |> List.map
+                    (\char ->
+                        button
+                            [ style "background" (backgroundColor (Maybe.withDefault NotTried (Dict.get char updatedAlphabet)))
+                            , onClick (CharEntered focusedCellId (Just char))
+                            ]
+                            [ text (char |> Char.toUpper |> String.fromChar) ]
+                    )
+
+        currentAttemptChars : List (Maybe Char)
+        currentAttemptChars =
+            Array.toList activeAttempt
+
+        canClearAttempt : Bool
+        canClearAttempt =
+            List.any
+                (\cell ->
+                    case cell of
+                        Just _ ->
+                            True
+
+                        Nothing ->
+                            False
                 )
-        )
+                currentAttemptChars
+
+        canSubmitAttempt : Bool
+        canSubmitAttempt =
+            List.all
+                (\cell ->
+                    case cell of
+                        Just _ ->
+                            True
+
+                        Nothing ->
+                            False
+                )
+                currentAttemptChars
+
+        clearButton : Html Msg
+        clearButton =
+            button
+                [ disabled (not canClearAttempt)
+                , onClick ClearAttempt
+                , type_ "button"
+                ]
+                [ text "Clear"
+                ]
+
+        submitButton : Html Msg
+        submitButton =
+            button
+                [ disabled (not canSubmitAttempt)
+                , onClick (SubmitAttempt word (activeAttempt |> Array.toList))
+                , type_ "submit"
+                ]
+                [ text "Submit" ]
+    in
+    div [ class "keyboard" ]
+        {- TODO: This is very ugly! -}
+        [ div [ class "keyboard-row" ] (row (List.head qwerty |> Maybe.withDefault []))
+        , div [ class "keyboard-row" ] (row (List.drop 1 qwerty |> List.head |> Maybe.withDefault []))
+        , div [ class "keyboard-row" ]
+            (clearButton
+                :: row (List.drop 2 qwerty |> List.head |> Maybe.withDefault [])
+                ++ [ submitButton ]
+            )
+        ]
 
 
 historicRow : List Letter -> Html msg
 historicRow attempt =
     div
-        [ style "display" "flex"
-        , style "gap" "10px"
-        ]
+        [ class "historic-row" ]
         (attempt
             |> List.map
                 (\letter ->
@@ -260,16 +296,7 @@ historicRow attempt =
                             letter
                     in
                     div
-                        [ style "padding" "10px"
-                        , style "border" "1px solid black"
-                        , style "border-radius" "10px"
-                        , style "text-transform" "uppercase"
-                        , style "font-size" "32px"
-                        , style "font-weight" "bold"
-                        , style "text-align" "center"
-                        , style "width" "1em"
-                        , style "background-color" (backgroundColor state)
-                        ]
+                        [ style "background" (backgroundColor state) ]
                         [ text (String.fromChar char) ]
                 )
         )
@@ -324,57 +351,12 @@ activeRow word attempt =
                                 ]
                     )
                 |> Array.toList
-
-        attemptList : List (Maybe Char)
-        attemptList =
-            Array.toList attempt
-
-        canClearAttempt : Bool
-        canClearAttempt =
-            List.any
-                (\cell ->
-                    case cell of
-                        Just _ ->
-                            True
-
-                        Nothing ->
-                            False
-                )
-                attemptList
-
-        canSubmitAttempt : Bool
-        canSubmitAttempt =
-            List.all
-                (\cell ->
-                    case cell of
-                        Just _ ->
-                            True
-
-                        Nothing ->
-                            False
-                )
-                attemptList
     in
     form
-        [ style "display" "flex"
-        , style "gap" "10px"
+        [ class "active-row"
         , onSubmit (SubmitAttempt word (attempt |> Array.toList))
         ]
-        (cells
-            ++ [ button
-                    [ disabled (not canSubmitAttempt)
-                    , type_ "submit"
-                    ]
-                    [ text "Submit" ]
-               , button
-                    [ disabled (not canClearAttempt)
-                    , onClick ClearAttempt
-                    , type_ "button"
-                    ]
-                    [ text "Clear"
-                    ]
-               ]
-        )
+        cells
 
 
 backgroundColor : LetterState -> String
@@ -588,7 +570,7 @@ main =
         , view =
             \model ->
                 { title = "ELM Wordle"
-                , body = [ view model ]
+                , body = view model
                 }
         , update = \msg -> \model -> update msg model
         , subscriptions = \_ -> Sub.none

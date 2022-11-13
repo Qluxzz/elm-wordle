@@ -1,0 +1,86 @@
+/* Based on Josh Comeau blog post: https://www.joshwcomeau.com/css/custom-css-reset/ */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+* {
+    margin: 0;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+/* End of CSS reset */
+
+body {
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin: 10px;
+}
+
+.game {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.keyboard {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.keyboard-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.keyboard-row>button {
+    font-size: 100%;
+    flex-grow: 0;
+    flex-shrink: 1;
+    flex-basis: 50px;
+}
+
+.historic-row,
+.active-row {
+    display: flex;
+    gap: 10px;
+}
+
+.active-row>div {
+    flex-grow: 1;
+    display: flex;
+}
+
+.active-row input {
+    flex-grow: 1;
+}
+
+.historic-row>div {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid black;
+    border-radius: 10px;
+    text-transform: uppercase;
+    font-size: 32px;
+    font-weight: bold;
+    text-align: center;
+    width: 1em;
+}
+
+.rows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
