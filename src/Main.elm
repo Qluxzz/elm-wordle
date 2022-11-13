@@ -46,11 +46,6 @@ type alias Model =
     }
 
 
-init : Model
-init =
-    { state = Loading }
-
-
 
 -- VIEW
 
