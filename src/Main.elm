@@ -79,11 +79,16 @@ update msg model =
         Game gameMsg ->
             case model.state of
                 Playing gameModel ->
-                    let
-                        ( updatedModel, cmd ) =
-                            Game.update gameMsg gameModel
-                    in
-                    ( { model | state = Playing updatedModel }, Cmd.map (\c -> Game c) cmd )
+                    case gameMsg of
+                        Game.PlayAgain ->
+                            startNewGame
+
+                        _ ->
+                            let
+                                ( updatedModel, cmd ) =
+                                    Game.update gameMsg gameModel
+                            in
+                            ( { model | state = Playing updatedModel }, Cmd.map (\c -> Game c) cmd )
 
                 _ ->
                     ( model, Cmd.none )
@@ -101,7 +106,7 @@ update msg model =
                     ( { model | state = Error "Failed to get random word" }, Cmd.none )
 
         StartNewGame ->
-            ( { model | state = Loading }, Random.generate GenerateRandomIndex (Random.int 0 wordsLength) )
+            startNewGame
 
 
 
@@ -111,7 +116,7 @@ update msg model =
 main : Program () Model Msg
 main =
     Browser.document
-        { init = \_ -> ( init, Random.generate GenerateRandomIndex (Random.int 0 wordsLength) )
+        { init = \_ -> startNewGame
         , view =
             \model ->
                 { title = "ELM Wordle"
@@ -120,3 +125,12 @@ main =
         , update = \msg -> \model -> update msg model
         , subscriptions = \_ -> Sub.none
         }
+
+
+
+-- Helpers
+
+
+startNewGame : ( Model, Cmd Msg )
+startNewGame =
+    ( { state = Loading }, Random.generate GenerateRandomIndex (Random.int 0 wordsLength) )

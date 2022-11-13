@@ -1,4 +1,4 @@
-module Game exposing (Model, Msg, init, update, view)
+module Game exposing (Model, Msg(..), init, update, view)
 
 import Alphabet
 import Array exposing (Array)
@@ -77,6 +77,7 @@ type Msg
     | CharEntered Int (Maybe Char)
     | ClearAttempt
     | FocusedInput Int
+    | PlayAgain
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -149,6 +150,10 @@ update msg model =
         ClearAttempt ->
             ( { model | currentAttempt = emptyRow }, focusFirstCell )
 
+        {- Handled by Main update method -}
+        PlayAgain ->
+            ( model, Cmd.none )
+
 
 
 -- VIEW
@@ -156,16 +161,34 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ HA.class "game" ]
-        [ div
-            [ HA.class "rows" ]
-            (List.map
-                historicRow
-                model.history
-                ++ [ activeRow model.currentAttempt ]
-            )
-        , keyboardView model.history model.currentAttempt model.selectedCell
-        ]
+    let
+        playAgainButton =
+            button
+                [ HE.onClick PlayAgain
+                ]
+                [ text "Play another round!" ]
+    in
+    case model.state of
+        Won ->
+            div []
+                [ h1 [] [ text "You won!" ]
+                , playAgainButton
+                ]
+
+        Lost ->
+            div [] [ h1 [] [ text ("You lost! The correct word was " ++ model.correctWord) ], playAgainButton ]
+
+        Playing ->
+            div [ HA.class "game" ]
+                [ div
+                    [ HA.class "rows" ]
+                    (List.map
+                        historicRow
+                        model.history
+                        ++ [ activeRow model.currentAttempt ]
+                    )
+                , keyboardView model.history model.currentAttempt model.selectedCell
+                ]
 
 
 qwerty : List (List Char)
