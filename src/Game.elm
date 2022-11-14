@@ -8,6 +8,7 @@ import FiveLetterWords as FLW
 import Html exposing (..)
 import Html.Attributes as HA
 import Html.Events as HE
+import Process
 import Task
 
 
@@ -57,6 +58,7 @@ type alias Model =
     , selectedCell : Int
     , correctWord : String
     , state : State
+    , alert : Maybe String
     }
 
 
@@ -67,59 +69,64 @@ init word =
       , selectedCell = 0
       , correctWord = word
       , state = Playing
+      , alert = Nothing
       }
     , focusFirstCell
     )
 
 
 type Msg
-    = SubmitAttempt (List (Maybe Char))
+    = SubmitAttempt
     | CharEntered Char
     | RemoveChar
     | FocusedInput Int
     | PlayAgain
+    | ClearAlert
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    let
-        word =
-            model.correctWord
-    in
     case msg of
-        SubmitAttempt [ Just a, Just b, Just c, Just d, Just e ] ->
-            let
-                attempt =
-                    [ a, b, c, d, e ]
-            in
-            case validateAttempt word attempt of
-                Nothing ->
-                    -- TODO: Show alert that word was invalid
-                    ( { model
-                        | currentAttempt = emptyRow
-                      }
-                    , focusFirstCell
-                    )
+        SubmitAttempt ->
+            case Array.toList model.currentAttempt of
+                [ Just a, Just b, Just c, Just d, Just e ] ->
+                    let
+                        attempt =
+                            [ a, b, c, d, e ]
+                    in
+                    case validateAttempt model.correctWord attempt of
+                        Nothing ->
+                            -- TODO: Show alert that word was invalid
+                            ( { model
+                                | currentAttempt = emptyRow
+                                , alert = Just (List.foldl (\x -> \acc -> acc ++ String.fromChar x) "" attempt ++ " is not a valid word!")
+                              }
+                            , Cmd.batch
+                                [ focusFirstCell
+                                , Process.sleep 1500
+                                    |> Task.perform (\_ -> ClearAlert)
+                                ]
+                            )
 
-                Just validated ->
-                    ( { model
-                        | history = model.history ++ [ validated ]
-                        , currentAttempt = emptyRow
-                        , state =
-                            if List.all (\( _, lS ) -> lS == CorrectPlace) validated then
-                                Won
+                        Just validated ->
+                            ( { model
+                                | history = model.history ++ [ validated ]
+                                , currentAttempt = emptyRow
+                                , state =
+                                    if List.all (\( _, lS ) -> lS == CorrectPlace) validated then
+                                        Won
 
-                            else if List.length model.history + 1 == maxiumAttempts then
-                                Lost
+                                    else if List.length model.history + 1 == maxiumAttempts then
+                                        Lost
 
-                            else
-                                Playing
-                      }
-                    , focusFirstCell
-                    )
+                                    else
+                                        Playing
+                              }
+                            , focusFirstCell
+                            )
 
-        SubmitAttempt _ ->
-            ( model, Cmd.none )
+                _ ->
+                    ( model, Cmd.none )
 
         CharEntered char ->
             let
@@ -151,6 +158,9 @@ update msg model =
         PlayAgain ->
             ( model, Cmd.none )
 
+        ClearAlert ->
+            ( { model | alert = Nothing }, Cmd.none )
+
 
 
 -- VIEW
@@ -164,6 +174,14 @@ view model =
                 [ HE.onClick PlayAgain
                 ]
                 [ text "Play another round!" ]
+
+        alertDialog =
+            case model.alert of
+                Just alert ->
+                    div [ HA.class "alert" ] [ text alert ]
+
+                Nothing ->
+                    text ""
     in
     case model.state of
         Won ->
@@ -185,6 +203,7 @@ view model =
                         ++ [ activeRow model.currentAttempt model.selectedCell ]
                     )
                 , keyboardView model.history model.currentAttempt
+                , alertDialog
                 ]
 
 
@@ -255,7 +274,7 @@ keyboardView historicAttempts activeAttempt =
         submitButton =
             button
                 [ HA.disabled (not canSubmitAttempt)
-                , HE.onClick (SubmitAttempt (activeAttempt |> Array.toList))
+                , HE.onClick SubmitAttempt
                 , HA.type_ "submit"
                 ]
                 [ text "Submit" ]
@@ -299,13 +318,7 @@ activeRow attempt focusedIndex =
                     (\index ->
                         \char ->
                             div
-                                [ HA.style "padding" "10px"
-                                , HA.style "border" "1px solid black"
-                                , HA.style "border-radius" "10px"
-                                , HA.style "font-weight" "bold"
-                                , HA.style "width" "1em"
-                                , HA.style "font-size" "32px"
-                                , HA.style "id" ("cell" ++ String.fromInt index)
+                                [ HA.style "id" ("cell" ++ String.fromInt index)
                                 , HA.classList [ ( "selected", focusedIndex == index ) ]
                                 , HE.onFocus (FocusedInput index)
                                 , HE.onClick (FocusedInput index)
@@ -322,7 +335,7 @@ activeRow attempt focusedIndex =
     in
     form
         [ HA.class "active-row"
-        , HE.onSubmit (SubmitAttempt (attempt |> Array.toList))
+        , HE.onSubmit SubmitAttempt
         ]
         cells
 
