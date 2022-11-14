@@ -58,16 +58,12 @@ body {
     gap: 10px;
 }
 
-.active-row>div {
-    flex-grow: 1;
-    display: flex;
-}
-
 .active-row input {
     flex-grow: 1;
 }
 
-.historic-row>div {
+.historic-row>div,
+.active-row>div {
     flex-grow: 1;
     padding: 10px;
     border: 1px solid black;
@@ -77,6 +73,7 @@ body {
     font-weight: bold;
     text-align: center;
     width: 1em;
+    height: 67px;
 }
 
 .rows {

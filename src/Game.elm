@@ -317,36 +317,14 @@ activeRow attempt =
                                 , HA.style "font-weight" "bold"
                                 , HA.style "width" "1em"
                                 , HA.style "font-size" "32px"
+                                , HA.style "id" ("cell" ++ String.fromInt index)
+                                , HE.onFocus (FocusedInput index)
                                 ]
-                                [ input
-                                    [ HA.maxlength 1
-                                    , HA.style "width" "1em"
-                                    , HA.style "border" "0px"
-                                    , HA.style "font-size" "32px"
-                                    , HA.style "text-align" "center"
-                                    , HA.style "text-transform" "uppercase"
-                                    , HA.type_ "text"
-                                    , HA.id ("cell" ++ String.fromInt index)
-                                    , HA.autocomplete False
-                                    , HE.onFocus (FocusedInput index)
-                                    , HE.onInput
-                                        (\str ->
-                                            str
-                                                |> String.toLower
-                                                |> String.toList
-                                                |> List.head
-                                                |> CharEntered index
-                                        )
-                                    , HA.value
-                                        (case char of
-                                            Just c ->
-                                                String.fromChar c
-
-                                            Nothing ->
-                                                ""
-                                        )
-                                    ]
-                                    []
+                                [ text
+                                    (char
+                                        |> Maybe.map String.fromChar
+                                        |> Maybe.withDefault ""
+                                    )
                                 ]
                     )
                 |> Array.toList
