@@ -52,16 +52,23 @@ body {
     gap: 4px;
 }
 
-.keyboard-row>button {
+.keyboard-row>div {
     font-size: 100%;
     flex-grow: 1;
     flex-basis: 1ch;
     width: 10px;
     height: 45px;
-    border: 1px solid black;
     display: flex;
     justify-content: center;
     align-items: center;
+    background: #ccc;
+    color: black;
+    border-radius: 5px;
+}
+
+.keyboard-row>div.disabled {
+    background: #fff;
+    pointer-events: none;
 }
 
 .historic-row,
@@ -86,14 +93,17 @@ body {
     text-align: center;
     width: 1em;
     height: 67px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 
 
-.active-row>div.selected,
-.active-row>div:active {
-    outline: 1px solid blue;
-    border-radius: 10px;
+.active-row>div.selected {
+    border: 2px solid black;
+    padding: 9px;
 }
 
 .alert {

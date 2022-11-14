@@ -249,7 +249,7 @@ keyboardView historicAttempts activeAttempt =
             letters
                 |> List.map
                     (\char ->
-                        button
+                        div
                             [ HA.style "background" (backgroundColor (Maybe.withDefault NotTried (Dict.get char updatedAlphabet)))
                             , HE.onClick (CharEntered char)
                             ]
@@ -288,20 +288,21 @@ keyboardView historicAttempts activeAttempt =
 
         clearButton : Html Msg
         clearButton =
-            button
-                [ HA.disabled (not canClearAttempt)
+            div
+                [ HA.classList [ ( "disabled", not canClearAttempt ) ]
                 , HE.onClick RemoveChar
                 , HA.type_ "button"
                 ]
-                [ text "Clear"
+                [ text "⬅️"
                 ]
 
         submitButton : Html Msg
         submitButton =
-            button
-                [ HA.disabled (not canSubmitAttempt)
+            div
+                [ HA.classList [ ( "disabled", not canSubmitAttempt ) ]
                 , HE.onClick SubmitAttempt
-                , HA.type_ "submit"
+                , HA.style "flex-shrink" "0"
+                , HA.style "flex-basis" "70px"
                 ]
                 [ text "Submit" ]
     in
@@ -417,7 +418,7 @@ backgroundColor state =
             "green"
 
         NotTried ->
-            "white"
+            "#ccc"
 
         IncorrectPlace ->
             "orange"
