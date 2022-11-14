@@ -152,8 +152,30 @@ update msg model =
                 , focusNextCell
                 )
 
+        {-
+           If the current cell is empty, clear previous cell and focus that cell
+           Otherwise clear char in current cell
+        -}
         RemoveChar ->
-            ( { model | currentAttempt = Array.set model.selectedCell Nothing model.currentAttempt }, focusCell (model.selectedCell - 1) )
+            let
+                clearIndex : Int
+                clearIndex =
+                    let
+                        unwrappedValue =
+                            Array.get model.selectedCell model.currentAttempt |> Maybe.andThen (\v -> v)
+                    in
+                    case unwrappedValue of
+                        Nothing ->
+                            if model.selectedCell > 0 then
+                                model.selectedCell - 1
+
+                            else
+                                model.selectedCell
+
+                        Just _ ->
+                            model.selectedCell
+            in
+            ( { model | currentAttempt = Array.set clearIndex Nothing model.currentAttempt }, focusCell clearIndex )
 
         FocusedInput cellId ->
             ( { model | selectedCell = cellId }, Cmd.none )
