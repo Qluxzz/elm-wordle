@@ -76,6 +76,10 @@ body {
     height: 67px;
 }
 
+.active-row>div.selected {
+    outline: 1px solid blue;
+}
+
 .rows {
     display: flex;
     flex-direction: column;

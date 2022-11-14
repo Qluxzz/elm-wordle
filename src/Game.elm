@@ -74,8 +74,8 @@ init word =
 
 type Msg
     = SubmitAttempt (List (Maybe Char))
-    | CharEntered Int (Maybe Char)
-    | ClearAttempt
+    | CharEntered Char
+    | RemoveChar
     | FocusedInput Int
     | PlayAgain
 
@@ -121,13 +121,13 @@ update msg model =
         SubmitAttempt _ ->
             ( model, Cmd.none )
 
-        CharEntered index (Just char) ->
+        CharEntered char ->
             let
                 charCode =
                     Char.toCode char
 
                 focusNextCell =
-                    focusCell (index + 1)
+                    focusCell (model.selectedCell + 1)
             in
             -- TODO: Allow backspace to remove current char
             if char == ' ' then
@@ -137,18 +137,15 @@ update msg model =
                 ( model, Cmd.none )
 
             else
-                ( { model | currentAttempt = Array.set index (Just (Char.toLower char)) model.currentAttempt }
+                ( { model | currentAttempt = Array.set model.selectedCell (Just (Char.toLower char)) model.currentAttempt }
                 , focusNextCell
                 )
 
-        CharEntered _ Nothing ->
-            ( model, Cmd.none )
+        RemoveChar ->
+            ( { model | currentAttempt = Array.set model.selectedCell Nothing model.currentAttempt }, focusCell (model.selectedCell - 1) )
 
         FocusedInput cellId ->
             ( { model | selectedCell = cellId }, Cmd.none )
-
-        ClearAttempt ->
-            ( { model | currentAttempt = emptyRow }, focusFirstCell )
 
         {- Handled by Main update method -}
         PlayAgain ->
@@ -185,22 +182,14 @@ view model =
                     (List.map
                         historicRow
                         model.history
-                        ++ [ activeRow model.currentAttempt ]
+                        ++ [ activeRow model.currentAttempt model.selectedCell ]
                     )
-                , keyboardView model.history model.currentAttempt model.selectedCell
+                , keyboardView model.history model.currentAttempt
                 ]
 
 
-qwerty : List (List Char)
-qwerty =
-    [ [ 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p' ]
-    , [ 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l' ]
-    , [ 'z', 'x', 'c', 'v', 'b', 'n', 'm' ]
-    ]
-
-
-keyboardView : List Attempt -> Array (Maybe Char) -> Int -> Html Msg
-keyboardView historicAttempts activeAttempt focusedCellId =
+keyboardView : List Attempt -> Array (Maybe Char) -> Html Msg
+keyboardView historicAttempts activeAttempt =
     let
         letterList : List Letter
         letterList =
@@ -217,7 +206,7 @@ keyboardView historicAttempts activeAttempt focusedCellId =
                     (\char ->
                         button
                             [ HA.style "background" (backgroundColor (Maybe.withDefault NotTried (Dict.get char updatedAlphabet)))
-                            , HE.onClick (CharEntered focusedCellId (Just char))
+                            , HE.onClick (CharEntered char)
                             ]
                             [ text (char |> Char.toUpper |> String.fromChar) ]
                     )
@@ -256,7 +245,7 @@ keyboardView historicAttempts activeAttempt focusedCellId =
         clearButton =
             button
                 [ HA.disabled (not canClearAttempt)
-                , HE.onClick ClearAttempt
+                , HE.onClick RemoveChar
                 , HA.type_ "button"
                 ]
                 [ text "Clear"
@@ -272,12 +261,11 @@ keyboardView historicAttempts activeAttempt focusedCellId =
                 [ text "Submit" ]
     in
     div [ HA.class "keyboard" ]
-        {- TODO: This is very ugly! -}
-        [ div [ HA.class "keyboard-row" ] (row (List.head qwerty |> Maybe.withDefault []))
-        , div [ HA.class "keyboard-row" ] (row (List.drop 1 qwerty |> List.head |> Maybe.withDefault []))
+        [ div [ HA.class "keyboard-row" ] (row [ 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p' ])
+        , div [ HA.class "keyboard-row" ] (row [ 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l' ])
         , div [ HA.class "keyboard-row" ]
             (clearButton
-                :: row (List.drop 2 qwerty |> List.head |> Maybe.withDefault [])
+                :: row [ 'z', 'x', 'c', 'v', 'b', 'n', 'm' ]
                 ++ [ submitButton ]
             )
         ]
@@ -301,8 +289,8 @@ historicRow attempt =
         )
 
 
-activeRow : Array (Maybe Char) -> Html Msg
-activeRow attempt =
+activeRow : Array (Maybe Char) -> Int -> Html Msg
+activeRow attempt focusedIndex =
     let
         cells : List (Html Msg)
         cells =
@@ -318,7 +306,10 @@ activeRow attempt =
                                 , HA.style "width" "1em"
                                 , HA.style "font-size" "32px"
                                 , HA.style "id" ("cell" ++ String.fromInt index)
+                                , HA.classList [ ( "selected", focusedIndex == index ) ]
                                 , HE.onFocus (FocusedInput index)
+                                , HE.onClick (FocusedInput index)
+                                , HA.tabindex 0
                                 ]
                                 [ text
                                     (char
