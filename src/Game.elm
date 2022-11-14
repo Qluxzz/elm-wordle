@@ -109,14 +109,18 @@ update msg model =
                             )
 
                         Just validated ->
+                            let
+                                updatedHistory =
+                                    model.history ++ [ validated ]
+                            in
                             ( { model
-                                | history = model.history ++ [ validated ]
+                                | history = updatedHistory
                                 , currentAttempt = emptyRow
                                 , state =
                                     if List.all (\( _, lS ) -> lS == CorrectPlace) validated then
                                         Won
 
-                                    else if List.length model.history + 1 == maxiumAttempts then
+                                    else if List.length updatedHistory == maxiumAttempts then
                                         Lost
 
                                     else
