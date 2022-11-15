@@ -322,11 +322,7 @@ historicRow attempt =
         [ HA.class "historic-row" ]
         (attempt
             |> List.map
-                (\letter ->
-                    let
-                        ( char, state ) =
-                            letter
-                    in
+                (\( char, state ) ->
                     div
                         [ HA.style "background" (backgroundColor state) ]
                         [ text (String.fromChar char) ]
