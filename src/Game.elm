@@ -96,7 +96,6 @@ update msg model =
                     in
                     case validateAttempt model.correctWord attempt of
                         Nothing ->
-                            -- TODO: Show alert that word was invalid
                             ( { model
                                 | currentAttempt = emptyRow
                                 , alert = Just (List.foldl (\x -> \acc -> acc ++ String.fromChar x) "" attempt ++ " is not a valid word!")
