@@ -59,6 +59,7 @@ type alias Model =
     , correctWord : String
     , state : State
     , alert : Maybe String
+    , triedLetters : Dict Char LetterState
     }
 
 
@@ -70,6 +71,7 @@ init word =
       , correctWord = word
       , state = Playing
       , alert = Nothing
+      , triedLetters = Dict.empty
       }
     , focusFirstCell
     )
@@ -111,10 +113,40 @@ update msg model =
                             let
                                 updatedHistory =
                                     model.history ++ [ validated ]
+
+                                updatedTriedLetters : Dict Char LetterState
+                                updatedTriedLetters =
+                                    List.foldl
+                                        (\( char, new ) ->
+                                            \acc ->
+                                                Dict.update char
+                                                    (\maybe ->
+                                                        Just
+                                                            (case maybe of
+                                                                Just old ->
+                                                                    case sortByLetterState old new of
+                                                                        LT ->
+                                                                            old
+
+                                                                        GT ->
+                                                                            new
+
+                                                                        EQ ->
+                                                                            old
+
+                                                                Nothing ->
+                                                                    new
+                                                            )
+                                                    )
+                                                    acc
+                                        )
+                                        model.triedLetters
+                                        validated
                             in
                             ( { model
                                 | history = updatedHistory
                                 , currentAttempt = emptyRow
+                                , triedLetters = updatedTriedLetters
                                 , state =
                                     if List.all (\( _, lS ) -> lS == CorrectPlace) validated then
                                         Won
@@ -219,6 +251,37 @@ view model =
             div [] [ h1 [] [ text ("You lost! The correct word was " ++ model.correctWord) ], playAgainButton ]
 
         Playing ->
+            let
+                currentAttemptChars : List (Maybe Char)
+                currentAttemptChars =
+                    Array.toList model.currentAttempt
+
+                canClearAttempt : Bool
+                canClearAttempt =
+                    List.any
+                        (\cell ->
+                            case cell of
+                                Just _ ->
+                                    True
+
+                                Nothing ->
+                                    False
+                        )
+                        currentAttemptChars
+
+                canSubmitAttempt : Bool
+                canSubmitAttempt =
+                    List.all
+                        (\cell ->
+                            case cell of
+                                Just _ ->
+                                    True
+
+                                Nothing ->
+                                    False
+                        )
+                        currentAttemptChars
+            in
             div [ HA.class "game" ]
                 [ div
                     [ HA.class "rows" ]
@@ -227,63 +290,25 @@ view model =
                         model.history
                         ++ [ activeRow model.currentAttempt model.selectedCell ]
                     )
-                , keyboardView model.history model.currentAttempt
+                , keyboardView model.triedLetters canSubmitAttempt canClearAttempt
                 , alertDialog
                 ]
 
 
-keyboardView : List Attempt -> Array (Maybe Char) -> Html Msg
-keyboardView historicAttempts activeAttempt =
+keyboardView : Dict Char LetterState -> Bool -> Bool -> Html Msg
+keyboardView triedLetters canSubmitAttempt canClearAttempt =
     let
-        letterList : List Letter
-        letterList =
-            List.concat historicAttempts
-
-        updatedAlphabet : Dict Char LetterState
-        updatedAlphabet =
-            List.foldl (\k -> \acc -> Dict.insert k (letterState k letterList) acc) Dict.empty Alphabet.alphabet
-
         row : List Char -> List (Html Msg)
         row letters =
             letters
                 |> List.map
                     (\char ->
                         div
-                            [ HA.style "background" (backgroundColor (Maybe.withDefault NotTried (Dict.get char updatedAlphabet)))
+                            [ HA.style "background" (backgroundColor (Maybe.withDefault NotTried (Dict.get char triedLetters)))
                             , HE.onClick (CharEntered char)
                             ]
                             [ text (char |> Char.toUpper |> String.fromChar) ]
                     )
-
-        currentAttemptChars : List (Maybe Char)
-        currentAttemptChars =
-            Array.toList activeAttempt
-
-        canClearAttempt : Bool
-        canClearAttempt =
-            List.any
-                (\cell ->
-                    case cell of
-                        Just _ ->
-                            True
-
-                        Nothing ->
-                            False
-                )
-                currentAttemptChars
-
-        canSubmitAttempt : Bool
-        canSubmitAttempt =
-            List.all
-                (\cell ->
-                    case cell of
-                        Just _ ->
-                            True
-
-                        Nothing ->
-                            False
-                )
-                currentAttemptChars
 
         clearButton : Html Msg
         clearButton =
@@ -376,31 +401,25 @@ focusFirstCell =
     focusCell 0
 
 
-letterState : Char -> List Letter -> LetterState
-letterState char letters =
-    let
-        states =
-            letters
-                |> List.filterMap
-                    (\( c, s ) ->
-                        if c == char then
-                            Just s
+letterStateOrder : LetterState -> Int
+letterStateOrder x =
+    case x of
+        CorrectPlace ->
+            0
 
-                        else
-                            Nothing
-                    )
-    in
-    if List.member CorrectPlace states then
-        CorrectPlace
+        IncorrectPlace ->
+            1
 
-    else if List.member IncorrectPlace states then
-        IncorrectPlace
+        NotIncluded ->
+            2
 
-    else if List.member NotIncluded states then
-        NotIncluded
+        NotTried ->
+            3
 
-    else
-        NotTried
+
+sortByLetterState : LetterState -> LetterState -> Order
+sortByLetterState a b =
+    compare (letterStateOrder a) (letterStateOrder b)
 
 
 backgroundColor : LetterState -> String
