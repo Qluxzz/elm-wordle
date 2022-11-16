@@ -32,8 +32,7 @@ type State
 
 
 type Msg
-    = StartNewGame
-    | GenerateRandomIndex Int
+    = GenerateRandomIndex Int
     | Game Game.Msg
 
 
@@ -95,9 +94,6 @@ update msg model =
 
                 Nothing ->
                     ( { model | state = Error "Failed to get random word" }, Cmd.none )
-
-        StartNewGame ->
-            startNewGame
 
 
 
