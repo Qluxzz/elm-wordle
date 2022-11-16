@@ -331,14 +331,15 @@ keyboardView triedLetters canSubmitAttempt canClearAttempt =
                 [ text "Submit" ]
     in
     div [ HA.class "keyboard" ]
-        [ div [ HA.class "keyboard-row" ] (row [ 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p' ])
-        , div [ HA.class "keyboard-row" ] (row [ 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l' ])
-        , div [ HA.class "keyboard-row" ]
-            (clearButton
+        (List.map
+            (div [ HA.class "keyboard-row" ])
+            [ row [ 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p' ]
+            , row [ 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l' ]
+            , clearButton
                 :: row [ 'z', 'x', 'c', 'v', 'b', 'n', 'm' ]
                 ++ [ submitButton ]
-            )
-        ]
+            ]
+        )
 
 
 historicRow : List Letter -> Html msg
