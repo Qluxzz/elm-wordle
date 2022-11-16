@@ -59,7 +59,7 @@ type alias Model =
     , correctWord : String
     , state : State
     , alert : Maybe String
-    , triedLetters : Dict Char LetterState
+    , triedLetterStates : Dict Char LetterState
     }
 
 
@@ -71,7 +71,7 @@ init word =
       , correctWord = word
       , state = Playing
       , alert = Nothing
-      , triedLetters = Dict.empty
+      , triedLetterStates = Dict.empty
       }
     , focusFirstCell
     )
@@ -114,8 +114,8 @@ update msg model =
                                 updatedHistory =
                                     model.history ++ [ validated ]
 
-                                updatedTriedLetters : Dict Char LetterState
-                                updatedTriedLetters =
+                                updatedTriedLetterStates : Dict Char LetterState
+                                updatedTriedLetterStates =
                                     List.foldl
                                         (\( char, new ) ->
                                             \acc ->
@@ -140,13 +140,13 @@ update msg model =
                                                     )
                                                     acc
                                         )
-                                        model.triedLetters
+                                        model.triedLetterStates
                                         validated
                             in
                             ( { model
                                 | history = updatedHistory
                                 , currentAttempt = emptyRow
-                                , triedLetters = updatedTriedLetters
+                                , triedLetterStates = updatedTriedLetterStates
                                 , state =
                                     if List.all (\( _, lS ) -> lS == CorrectPlace) validated then
                                         Won
@@ -290,7 +290,7 @@ view model =
                         model.history
                         ++ [ activeRow model.currentAttempt model.selectedCell ]
                     )
-                , keyboardView model.triedLetters canSubmitAttempt canClearAttempt
+                , keyboardView model.triedLetterStates canSubmitAttempt canClearAttempt
                 , alertDialog
                 ]
 
