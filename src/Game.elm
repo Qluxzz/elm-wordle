@@ -1,6 +1,5 @@
 module Game exposing (Model, Msg(..), init, update, view)
 
-import Alphabet
 import Array exposing (Array)
 import Browser.Dom as Dom
 import Dict exposing (Dict)
@@ -165,23 +164,12 @@ update msg model =
 
         CharEntered char ->
             let
-                charCode =
-                    Char.toCode char
-
                 focusNextCell =
                     focusCell (model.selectedCell + 1)
             in
-            -- TODO: Allow backspace to remove current char
-            if char == ' ' then
-                ( model, focusNextCell )
-
-            else if charCode < Alphabet.aCharCode || charCode > Alphabet.zCharCode then
-                ( model, Cmd.none )
-
-            else
-                ( { model | currentAttempt = Array.set model.selectedCell (Just (Char.toLower char)) model.currentAttempt }
-                , focusNextCell
-                )
+            ( { model | currentAttempt = Array.set model.selectedCell (Just (Char.toLower char)) model.currentAttempt }
+            , focusNextCell
+            )
 
         {-
            If the current cell is empty, clear previous cell and focus that cell
