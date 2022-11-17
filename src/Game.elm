@@ -311,7 +311,6 @@ keyboardView triedLetters canSubmitAttempt canClearAttempt =
             div
                 [ HA.classList [ ( "disabled", not canClearAttempt ) ]
                 , HE.onClick RemoveChar
-                , HA.type_ "button"
                 ]
                 [ text "⬅️"
                 ]
@@ -322,7 +321,7 @@ keyboardView triedLetters canSubmitAttempt canClearAttempt =
                 [ HA.classList [ ( "disabled", not canSubmitAttempt ) ]
                 , HE.onClick SubmitAttempt
                 , HA.style "flex-shrink" "0"
-                , HA.style "flex-basis" "70px"
+                , HA.style "flex-basis" "34px"
                 ]
                 [ text "Submit" ]
     in
