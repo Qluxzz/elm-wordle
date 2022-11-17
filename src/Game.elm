@@ -215,12 +215,6 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        playAgainButton =
-            button
-                [ HE.onClick PlayAgain
-                ]
-                [ text "Play another round!" ]
-
         alertDialog =
             case model.alert of
                 Just alert ->
@@ -228,55 +222,73 @@ view model =
 
                 Nothing ->
                     text ""
+
+        currentAttemptChars : List (Maybe Char)
+        currentAttemptChars =
+            Array.toList model.currentAttempt
+
+        cellHasChar : Maybe Char -> Bool
+        cellHasChar c =
+            case c of
+                Just _ ->
+                    True
+
+                Nothing ->
+                    False
+
+        canClearAttempt : Bool
+        canClearAttempt =
+            List.any
+                cellHasChar
+                currentAttemptChars
+
+        canSubmitAttempt : Bool
+        canSubmitAttempt =
+            List.all
+                cellHasChar
+                currentAttemptChars
     in
-    case model.state of
-        Won ->
-            div []
-                [ h1 [] [ text "You won!" ]
-                , playAgainButton
-                ]
+    div [ HA.class "game" ]
+        [ div
+            [ HA.class "rows" ]
+            (List.map
+                historicRow
+                model.history
+                ++ [ activeRow model.currentAttempt model.selectedCell ]
+            )
+        , keyboardView model.triedLetterStates canSubmitAttempt canClearAttempt
+        , alertDialog
+        , case model.state of
+            Won ->
+                gameResultsView model.correctWord "You won!"
 
-        Lost ->
-            div [] [ h1 [] [ text ("You lost! The correct word was " ++ model.correctWord) ], playAgainButton ]
+            Lost ->
+                gameResultsView model.correctWord ("You lost! The correct word was " ++ model.correctWord)
 
-        Playing ->
-            let
-                currentAttemptChars : List (Maybe Char)
-                currentAttemptChars =
-                    Array.toList model.currentAttempt
+            Playing ->
+                text ""
+        ]
 
-                cellHasChar : Maybe Char -> Bool
-                cellHasChar c =
-                    case c of
-                        Just _ ->
-                            True
 
-                        Nothing ->
-                            False
+playAgainButton : Html Msg
+playAgainButton =
+    button
+        [ HE.onClick PlayAgain ]
+        [ text "Play another round!" ]
 
-                canClearAttempt : Bool
-                canClearAttempt =
-                    List.any
-                        cellHasChar
-                        currentAttemptChars
 
-                canSubmitAttempt : Bool
-                canSubmitAttempt =
-                    List.all
-                        cellHasChar
-                        currentAttemptChars
-            in
-            div [ HA.class "game" ]
-                [ div
-                    [ HA.class "rows" ]
-                    (List.map
-                        historicRow
-                        model.history
-                        ++ [ activeRow model.currentAttempt model.selectedCell ]
-                    )
-                , keyboardView model.triedLetterStates canSubmitAttempt canClearAttempt
-                , alertDialog
-                ]
+gameResultsView : String -> String -> Html Msg
+gameResultsView correctWord resultText =
+    div [ HA.class "overlay" ]
+        [ h1 [ HA.style "text-align" "center" ]
+            [ text resultText ]
+        , playAgainButton
+        , a
+            [ HA.href ("https://www.merriam-webster.com/dictionary/" ++ String.toLower correctWord)
+            , HA.target "_blank"
+            ]
+            [ text ("Dictionary entry for '" ++ String.toLower correctWord ++ "'") ]
+        ]
 
 
 keyboardView : Dict Char LetterState -> Bool -> Bool -> Html Msg
@@ -383,16 +395,16 @@ backgroundColor : LetterState -> String
 backgroundColor state =
     case state of
         NotIncluded ->
-            "grey"
+            "rgb(180, 180, 180)"
 
         CorrectPlace ->
-            "green"
+            "rgb(0, 190, 0)"
 
         NotTried ->
-            "#ccc"
+            "rgb(225, 225, 225)"
 
         IncorrectPlace ->
-            "orange"
+            "#ffb01e"
 
 
 validateAttempt : String -> List Char -> Maybe (List Letter)
