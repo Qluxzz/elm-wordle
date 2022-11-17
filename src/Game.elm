@@ -1,4 +1,12 @@
-module Game exposing (Model, Msg(..), init, update, view)
+module Game exposing
+    ( LetterState(..)
+    , Model
+    , Msg(..)
+    , compareWords
+    , init
+    , update
+    , view
+    )
 
 import Array exposing (Array)
 import Browser.Dom as Dom

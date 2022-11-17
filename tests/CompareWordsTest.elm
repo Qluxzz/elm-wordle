@@ -1,7 +1,7 @@
 module CompareWordsTest exposing (suite)
 
 import Expect
-import Main exposing (LetterState(..), compareWords)
+import Game exposing (LetterState(..), compareWords)
 import Test exposing (..)
 
 
@@ -10,54 +10,54 @@ suite =
     describe "validateAttempt"
         [ test "valid result" <|
             \_ ->
-                compareWords "guess" ("human" |> String.toList)
+                compareWords "GUESS" ("HUMAN" |> String.toList)
                     |> Expect.equal
-                        [ ( 'h', NotIncluded )
-                        , ( 'u', CorrectPlace )
-                        , ( 'm', NotIncluded )
-                        , ( 'a', NotIncluded )
-                        , ( 'n', NotIncluded )
+                        [ ( 'H', NotIncluded )
+                        , ( 'U', CorrectPlace )
+                        , ( 'M', NotIncluded )
+                        , ( 'A', NotIncluded )
+                        , ( 'N', NotIncluded )
                         ]
         , test "another valid result" <|
             \_ ->
-                compareWords "zooms" ("guess" |> String.toList)
+                compareWords "ZOOMS" ("GUESS" |> String.toList)
                     |> Expect.equal
-                        [ ( 'g', NotIncluded )
-                        , ( 'u', NotIncluded )
-                        , ( 'e', NotIncluded )
-                        , ( 's', NotIncluded )
-                        , ( 's', CorrectPlace )
+                        [ ( 'G', NotIncluded )
+                        , ( 'U', NotIncluded )
+                        , ( 'E', NotIncluded )
+                        , ( 'S', NotIncluded )
+                        , ( 'S', CorrectPlace )
                         ]
         , describe "multiple of same letter"
             [ test "one correct place and one incorrect place" <|
                 \_ ->
-                    compareWords "guess" ("sucks" |> String.toList)
+                    compareWords "GUESS" ("SUCKS" |> String.toList)
                         |> Expect.equal
-                            [ ( 's', IncorrectPlace )
-                            , ( 'u', CorrectPlace )
-                            , ( 'c', NotIncluded )
-                            , ( 'k', NotIncluded )
-                            , ( 's', CorrectPlace )
+                            [ ( 'S', IncorrectPlace )
+                            , ( 'U', CorrectPlace )
+                            , ( 'C', NotIncluded )
+                            , ( 'K', NotIncluded )
+                            , ( 'S', CorrectPlace )
                             ]
             , test "one correct place and one not included" <|
                 \_ ->
-                    compareWords "stuff" ("sucks" |> String.toList)
+                    compareWords "STUFF" ("SUCKS" |> String.toList)
                         |> Expect.equal
-                            [ ( 's', CorrectPlace )
-                            , ( 'u', IncorrectPlace )
-                            , ( 'c', NotIncluded )
-                            , ( 'k', NotIncluded )
-                            , ( 's', NotIncluded )
+                            [ ( 'S', CorrectPlace )
+                            , ( 'U', IncorrectPlace )
+                            , ( 'C', NotIncluded )
+                            , ( 'K', NotIncluded )
+                            , ( 'S', NotIncluded )
                             ]
             , test "one incorrect place and rest not included" <|
                 \_ ->
-                    compareWords "stuff" ("ussss" |> String.toList)
+                    compareWords "STUFF" ("USSSS" |> String.toList)
                         |> Expect.equal
-                            [ ( 'u', IncorrectPlace )
-                            , ( 's', IncorrectPlace )
-                            , ( 's', NotIncluded )
-                            , ( 's', NotIncluded )
-                            , ( 's', NotIncluded )
+                            [ ( 'U', IncorrectPlace )
+                            , ( 'S', IncorrectPlace )
+                            , ( 'S', NotIncluded )
+                            , ( 'S', NotIncluded )
+                            , ( 'S', NotIncluded )
                             ]
             ]
         ]
