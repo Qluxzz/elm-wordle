@@ -26,6 +26,7 @@ body {
 }
 
 .game {
+    position: relative;
     display: flex;
     flex-direction: column;
     flex-grow: 1;
@@ -111,7 +112,7 @@ body {
 }
 
 .alert {
-    position: fixed;
+    position: absolute;
     top: 10px;
     left: 10px;
     right: 10px;
