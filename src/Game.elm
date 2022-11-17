@@ -99,7 +99,15 @@ update msg model =
                         Nothing ->
                             ( { model
                                 | currentAttempt = emptyRow
-                                , alert = Just (List.foldl (\x -> \acc -> acc ++ String.fromChar x) "" attempt ++ " is not a valid word!")
+                                , alert =
+                                    let
+                                        word =
+                                            List.foldr
+                                                (String.fromChar >> (++))
+                                                ""
+                                                attempt
+                                    in
+                                    Just (word ++ " is not a valid word!")
                               }
                             , Cmd.batch
                                 [ focusFirstCell
@@ -112,40 +120,14 @@ update msg model =
                             let
                                 updatedHistory =
                                     model.history ++ [ validated ]
-
-                                updatedTriedLetterStates : Dict Char LetterState
-                                updatedTriedLetterStates =
-                                    List.foldl
-                                        (\( char, new ) ->
-                                            \acc ->
-                                                Dict.update char
-                                                    (\maybe ->
-                                                        Just
-                                                            (case maybe of
-                                                                Just old ->
-                                                                    case sortByLetterState old new of
-                                                                        LT ->
-                                                                            old
-
-                                                                        GT ->
-                                                                            new
-
-                                                                        EQ ->
-                                                                            old
-
-                                                                Nothing ->
-                                                                    new
-                                                            )
-                                                    )
-                                                    acc
-                                        )
-                                        model.triedLetterStates
-                                        validated
                             in
                             ( { model
                                 | history = updatedHistory
                                 , currentAttempt = emptyRow
-                                , triedLetterStates = updatedTriedLetterStates
+                                , triedLetterStates =
+                                    combineLetterStates
+                                        model.triedLetterStates
+                                        validated
                                 , state =
                                     if List.all (\( _, lS ) -> lS == CorrectPlace) validated then
                                         Won
@@ -167,7 +149,13 @@ update msg model =
                 focusNextCell =
                     focusCell (model.selectedCell + 1)
             in
-            ( { model | currentAttempt = Array.set model.selectedCell (Just (Char.toLower char)) model.currentAttempt }
+            ( { model
+                | currentAttempt =
+                    Array.set
+                        model.selectedCell
+                        (Just char)
+                        model.currentAttempt
+              }
             , focusNextCell
             )
 
@@ -177,12 +165,15 @@ update msg model =
         -}
         RemoveChar ->
             let
+                unwrappedValue : Maybe Char
+                unwrappedValue =
+                    Array.get
+                        model.selectedCell
+                        model.currentAttempt
+                        |> Maybe.andThen (\v -> v)
+
                 clearIndex : Int
                 clearIndex =
-                    let
-                        unwrappedValue =
-                            Array.get model.selectedCell model.currentAttempt |> Maybe.andThen (\v -> v)
-                    in
                     case unwrappedValue of
                         Nothing ->
                             if model.selectedCell > 0 then
@@ -194,7 +185,9 @@ update msg model =
                         Just _ ->
                             model.selectedCell
             in
-            ( { model | currentAttempt = Array.set clearIndex Nothing model.currentAttempt }, focusCell clearIndex )
+            ( { model | currentAttempt = Array.set clearIndex Nothing model.currentAttempt }
+            , focusCell clearIndex
+            )
 
         FocusedInput cellId ->
             ( { model | selectedCell = cellId }, Cmd.none )
@@ -244,30 +237,25 @@ view model =
                 currentAttemptChars =
                     Array.toList model.currentAttempt
 
+                cellHasChar : Maybe Char -> Bool
+                cellHasChar c =
+                    case c of
+                        Just _ ->
+                            True
+
+                        Nothing ->
+                            False
+
                 canClearAttempt : Bool
                 canClearAttempt =
                     List.any
-                        (\cell ->
-                            case cell of
-                                Just _ ->
-                                    True
-
-                                Nothing ->
-                                    False
-                        )
+                        cellHasChar
                         currentAttemptChars
 
                 canSubmitAttempt : Bool
                 canSubmitAttempt =
                     List.all
-                        (\cell ->
-                            case cell of
-                                Just _ ->
-                                    True
-
-                                Nothing ->
-                                    False
-                        )
+                        cellHasChar
                         currentAttemptChars
             in
             div [ HA.class "game" ]
@@ -321,10 +309,10 @@ keyboardView triedLetters canSubmitAttempt canClearAttempt =
     div [ HA.class "keyboard" ]
         (List.map
             (div [ HA.class "keyboard-row" ])
-            [ row [ 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p' ]
-            , row [ 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l' ]
+            [ row [ 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P' ]
+            , row [ 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L' ]
             , clearButton
-                :: row [ 'z', 'x', 'c', 'v', 'b', 'n', 'm' ]
+                :: row [ 'Z', 'X', 'C', 'V', 'B', 'N', 'M' ]
                 ++ [ submitButton ]
             ]
         )
@@ -346,34 +334,27 @@ historicRow attempt =
 
 activeRow : Array (Maybe Char) -> Int -> Html Msg
 activeRow attempt focusedIndex =
-    let
-        cells : List (Html Msg)
-        cells =
-            attempt
-                |> Array.indexedMap
-                    (\index ->
-                        \char ->
-                            div
-                                [ HA.style "id" ("cell" ++ String.fromInt index)
-                                , HA.classList [ ( "selected", focusedIndex == index ) ]
-                                , HE.onFocus (FocusedInput index)
-                                , HE.onClick (FocusedInput index)
-                                , HA.tabindex 0
-                                ]
-                                [ text
-                                    (char
-                                        |> Maybe.map String.fromChar
-                                        |> Maybe.withDefault ""
-                                    )
-                                ]
-                    )
-                |> Array.toList
-    in
-    form
-        [ HA.class "active-row"
-        , HE.onSubmit SubmitAttempt
-        ]
-        cells
+    div
+        [ HA.class "active-row" ]
+        (attempt
+            |> Array.indexedMap
+                (\index ->
+                    \char ->
+                        div
+                            [ HA.style "id" ("cell" ++ String.fromInt index)
+                            , HA.classList [ ( "selected", focusedIndex == index ) ]
+                            , HE.onFocus (FocusedInput index)
+                            , HE.onClick (FocusedInput index)
+                            ]
+                            [ text
+                                (char
+                                    |> Maybe.map String.fromChar
+                                    |> Maybe.withDefault ""
+                                )
+                            ]
+                )
+            |> Array.toList
+        )
 
 
 
@@ -388,27 +369,6 @@ focusCell id =
 focusFirstCell : Cmd Msg
 focusFirstCell =
     focusCell 0
-
-
-letterStateOrder : LetterState -> Int
-letterStateOrder x =
-    case x of
-        CorrectPlace ->
-            0
-
-        IncorrectPlace ->
-            1
-
-        NotIncluded ->
-            2
-
-        NotTried ->
-            3
-
-
-sortByLetterState : LetterState -> LetterState -> Order
-sortByLetterState a b =
-    compare (letterStateOrder a) (letterStateOrder b)
 
 
 backgroundColor : LetterState -> String
@@ -513,3 +473,54 @@ compareWords correct attempt =
             ( wordCharCount, [] )
             (List.map2 Tuple.pair (String.toList correct) attempt)
         )
+
+
+letterStateOrder : LetterState -> Int
+letterStateOrder x =
+    case x of
+        CorrectPlace ->
+            0
+
+        IncorrectPlace ->
+            1
+
+        NotIncluded ->
+            2
+
+        NotTried ->
+            3
+
+
+sortByLetterState : LetterState -> LetterState -> Order
+sortByLetterState a b =
+    compare (letterStateOrder a) (letterStateOrder b)
+
+
+combineLetterStates : Dict Char LetterState -> Attempt -> Dict Char LetterState
+combineLetterStates letterStates attemp =
+    List.foldl
+        (\( char, new ) ->
+            \acc ->
+                Dict.update char
+                    (\maybe ->
+                        Just
+                            (case maybe of
+                                Just old ->
+                                    case sortByLetterState old new of
+                                        LT ->
+                                            old
+
+                                        GT ->
+                                            new
+
+                                        EQ ->
+                                            old
+
+                                Nothing ->
+                                    new
+                            )
+                    )
+                    acc
+        )
+        letterStates
+        attemp

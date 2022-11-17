@@ -49,7 +49,7 @@ view : Model -> List (Html Msg)
 view model =
     [ case model.state of
         Playing gameModel ->
-            Html.map (\msg -> Game msg) (Game.view gameModel)
+            Html.map Game (Game.view gameModel)
 
         Loading ->
             div [] [ text "Loading!" ]
@@ -78,7 +78,7 @@ update msg model =
                                 ( updatedModel, cmd ) =
                                     Game.update gameMsg gameModel
                             in
-                            ( { model | state = Playing updatedModel }, Cmd.map (\c -> Game c) cmd )
+                            ( { model | state = Playing updatedModel }, Cmd.map Game cmd )
 
                 _ ->
                     ( model, Cmd.none )
@@ -90,7 +90,7 @@ update msg model =
                         ( gameModel, cmd ) =
                             Game.init word
                     in
-                    ( { model | state = Playing gameModel }, Cmd.map (\c -> Game c) cmd )
+                    ( { model | state = Playing gameModel }, Cmd.map Game cmd )
 
                 Nothing ->
                     ( { model | state = Error "Failed to get random word" }, Cmd.none )
