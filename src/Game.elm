@@ -254,7 +254,12 @@ view model =
             (List.map
                 historicRow
                 model.history
-                ++ [ activeRow model.currentAttempt model.selectedCell ]
+                ++ [ if model.state == Playing then
+                        activeRow model.currentAttempt model.selectedCell
+
+                     else
+                        text ""
+                   ]
             )
         , keyboardView model.triedLetterStates canSubmitAttempt canClearAttempt
         , alertDialog
