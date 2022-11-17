@@ -273,8 +273,10 @@ view model =
 playAgainButton : Html Msg
 playAgainButton =
     button
-        [ HE.onClick PlayAgain ]
-        [ text "Play another round!" ]
+        [ HE.onClick PlayAgain
+        , HA.style "font-size" "20px"
+        ]
+        [ text "PLAY AGAIN" ]
 
 
 gameResultsView : String -> String -> Html Msg
