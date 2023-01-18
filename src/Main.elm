@@ -1,9 +1,11 @@
 module Main exposing (main)
 
 import Browser
+import Browser.Events exposing (onKeyUp)
 import FiveLetterWords exposing (getRandomWord, wordsLength)
 import Game
 import Html exposing (..)
+import Json.Decode as Decode
 import Random
 
 
@@ -32,6 +34,7 @@ type State
 
 type Msg
     = Game Game.Msg
+    | NoOp
 
 
 type alias Model =
@@ -73,6 +76,9 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        NoOp ->
+            ( model, Cmd.none )
+
 
 
 -- MAIN
@@ -88,7 +94,7 @@ main =
                 , body = view model
                 }
         , update = \msg -> \model -> update msg model
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = \_ -> onKeyUp keyDecoder
         }
 
 
@@ -112,3 +118,54 @@ startNewGame seed =
 
         Nothing ->
             ( { state = Error "Failed to get random word" }, Cmd.none )
+
+
+keyDecoder : Decode.Decoder Msg
+keyDecoder =
+    Decode.map toKey (Decode.field "key" Decode.string)
+
+
+between : comparable -> comparable -> comparable -> Bool
+between min max value =
+    value >= min && value <= max
+
+
+toKey : String -> Msg
+toKey keyValue =
+    case String.uncons keyValue of
+        Just ( char, "" ) ->
+            let
+                normalizedChar =
+                    Char.toUpper char
+
+                code =
+                    Char.toCode normalizedChar
+
+                a =
+                    65
+
+                z =
+                    90
+            in
+            if between a z code then
+                Game (Game.CharEntered normalizedChar)
+
+            else
+                NoOp
+
+        _ ->
+            case keyValue of
+                "Backspace" ->
+                    Game Game.RemoveChar
+
+                "Enter" ->
+                    Game Game.SubmitAttempt
+
+                "ArrowLeft" ->
+                    Game Game.FocusPreviousCell
+
+                "ArrowRight" ->
+                    Game Game.FocusNextCell
+
+                _ ->
+                    NoOp

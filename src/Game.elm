@@ -90,6 +90,8 @@ type Msg
     | RemoveChar
     | FocusedInput Int
     | ClearAlert
+    | FocusPreviousCell
+    | FocusNextCell
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -198,6 +200,24 @@ update msg model =
 
         FocusedInput cellId ->
             ( { model | selectedCell = cellId }, Cmd.none )
+
+        FocusPreviousCell ->
+            ( model
+            , if model.selectedCell - 1 >= 0 then
+                focusCell (model.selectedCell - 1)
+
+              else
+                Cmd.none
+            )
+
+        FocusNextCell ->
+            ( model
+            , if model.selectedCell + 1 < defaultRowLength then
+                focusCell (model.selectedCell + 1)
+
+              else
+                Cmd.none
+            )
 
         ClearAlert ->
             ( { model | alert = Nothing }, Cmd.none )
