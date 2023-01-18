@@ -299,7 +299,7 @@ gameResultsView correctWord resultText =
             [ HA.href ("https://www.merriam-webster.com/dictionary/" ++ String.toLower correctWord)
             , HA.target "_blank"
             ]
-            [ text ("Dictionary entry for '" ++ String.toLower correctWord ++ "'") ]
+            [ text ("Dictionary entry for \"" ++ String.toLower correctWord ++ "\"") ]
         ]
 
 
