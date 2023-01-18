@@ -27,13 +27,11 @@ import Random
 
 type State
     = Playing Game.Model
-    | Loading
     | Error String
 
 
 type Msg
-    = GenerateRandomIndex Int
-    | Game Game.Msg
+    = Game Game.Msg
 
 
 type alias Model =
@@ -51,9 +49,6 @@ view model =
         Playing gameModel ->
             Html.map Game (Game.view gameModel)
 
-        Loading ->
-            div [] [ text "Loading!" ]
-
         Error message ->
             div [] [ text message ]
     ]
@@ -69,41 +64,24 @@ update msg model =
         Game gameMsg ->
             case model.state of
                 Playing gameModel ->
-                    case gameMsg of
-                        Game.PlayAgain ->
-                            startNewGame
-
-                        _ ->
-                            let
-                                ( updatedModel, cmd ) =
-                                    Game.update gameMsg gameModel
-                            in
-                            ( { model | state = Playing updatedModel }, Cmd.map Game cmd )
+                    let
+                        ( updatedModel, cmd ) =
+                            Game.update gameMsg gameModel
+                    in
+                    ( { model | state = Playing updatedModel }, Cmd.map Game cmd )
 
                 _ ->
                     ( model, Cmd.none )
-
-        GenerateRandomIndex index ->
-            case getRandomWord index of
-                Just word ->
-                    let
-                        ( gameModel, cmd ) =
-                            Game.init word
-                    in
-                    ( { model | state = Playing gameModel }, Cmd.map Game cmd )
-
-                Nothing ->
-                    ( { model | state = Error "Failed to get random word" }, Cmd.none )
 
 
 
 -- MAIN
 
 
-main : Program () Model Msg
+main : Program Int Model Msg
 main =
     Browser.document
-        { init = \_ -> startNewGame
+        { init = \seed -> startNewGame seed
         , view =
             \model ->
                 { title = "ELM Wordle"
@@ -118,6 +96,19 @@ main =
 -- Helpers
 
 
-startNewGame : ( Model, Cmd Msg )
-startNewGame =
-    ( { state = Loading }, Random.generate GenerateRandomIndex (Random.int 0 wordsLength) )
+startNewGame : Int -> ( Model, Cmd Msg )
+startNewGame seed =
+    let
+        ( index, _ ) =
+            Random.step (Random.int 0 wordsLength) (Random.initialSeed seed)
+    in
+    case getRandomWord index of
+        Just word ->
+            let
+                ( gameModel, cmd ) =
+                    Game.init word
+            in
+            ( { state = Playing gameModel }, Cmd.map Game cmd )
+
+        Nothing ->
+            ( { state = Error "Failed to get random word" }, Cmd.none )

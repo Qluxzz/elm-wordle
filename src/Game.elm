@@ -89,7 +89,6 @@ type Msg
     | CharEntered Char
     | RemoveChar
     | FocusedInput Int
-    | PlayAgain
     | ClearAlert
 
 
@@ -200,10 +199,6 @@ update msg model =
         FocusedInput cellId ->
             ( { model | selectedCell = cellId }, Cmd.none )
 
-        {- Handled by Main update method -}
-        PlayAgain ->
-            ( model, Cmd.none )
-
         ClearAlert ->
             ( { model | alert = Nothing }, Cmd.none )
 
@@ -275,21 +270,11 @@ view model =
         ]
 
 
-playAgainButton : Html Msg
-playAgainButton =
-    button
-        [ HE.onClick PlayAgain
-        , HA.style "font-size" "20px"
-        ]
-        [ text "PLAY AGAIN" ]
-
-
 gameResultsView : String -> String -> Html Msg
 gameResultsView correctWord resultText =
     div [ HA.class "overlay" ]
         [ h1 [ HA.style "text-align" "center" ]
             [ text resultText ]
-        , playAgainButton
         , a
             [ HA.href ("https://www.merriam-webster.com/dictionary/" ++ String.toLower correctWord)
             , HA.target "_blank"

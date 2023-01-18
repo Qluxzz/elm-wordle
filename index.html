@@ -13,7 +13,20 @@
 <body>
     <pre id="elm"></pre>
     <script type="text/javascript">
-        Elm.Main.init({ node: document.getElementById("elm") })
+        const now = new Date(Date.now())
+
+        const [year, month, date] = [
+            now.getFullYear(),
+            now.getMonth() + 1,
+            now.getDate()
+        ]
+
+        const seed = parseInt(`${year}${month}${date}`, 10)
+
+        Elm.Main.init({
+            node: document.getElementById("elm"),
+            flags: seed
+        })
     </script>
 </body>
 
