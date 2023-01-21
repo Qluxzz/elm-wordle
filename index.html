@@ -22,11 +22,25 @@
         ]
 
         const seed = parseInt(`${year}${month}${date}`, 10)
+        const key = `save-${seed}`
+        const savedState = localStorage.getItem(key)
 
-        Elm.Main.init({
+        // We haven't saved any progress for today's word
+        // Clear any existing saved state as well
+        if (!savedState)
+            localStorage.clear()
+
+        const app = Elm.Main.init({
             node: document.getElementById("elm"),
-            flags: seed
+            flags: {
+                seed,
+                save: savedState ? JSON.parse(savedState) : null
+            }
         })
+
+        app.ports.saveHistory.subscribe(message =>
+            localStorage.setItem(key, JSON.stringify(message))
+        )
     </script>
 </body>
 

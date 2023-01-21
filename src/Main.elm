@@ -84,10 +84,16 @@ update msg model =
 -- MAIN
 
 
-main : Program Int Model Msg
+type alias Flags =
+    { seed : Int
+    , save : Maybe (List String)
+    }
+
+
+main : Program Flags Model Msg
 main =
     Browser.document
-        { init = \seed -> startNewGame seed
+        { init = \{ seed, save } -> startNewGame seed save
         , view =
             \model ->
                 { title = "ELM Wordle"
@@ -102,8 +108,8 @@ main =
 -- Helpers
 
 
-startNewGame : Int -> ( Model, Cmd Msg )
-startNewGame seed =
+startNewGame : Int -> Maybe Game.SavedState -> ( Model, Cmd Msg )
+startNewGame seed savedState =
     let
         ( index, _ ) =
             Random.step (Random.int 0 wordsLength) (Random.initialSeed seed)
@@ -112,7 +118,7 @@ startNewGame seed =
         Just word ->
             let
                 ( gameModel, cmd ) =
-                    Game.init word
+                    Game.init word savedState
             in
             ( { state = Playing gameModel }, Cmd.map Game cmd )
 

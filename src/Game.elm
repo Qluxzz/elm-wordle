@@ -1,7 +1,8 @@
-module Game exposing
+port module Game exposing
     ( LetterState(..)
     , Model
     , Msg(..)
+    , SavedState
     , compareWords
     , init
     , update
@@ -17,6 +18,13 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Process
 import Task
+
+
+
+-- PORTS
+
+
+port saveHistory : List String -> Cmd msg
 
 
 
@@ -70,16 +78,54 @@ type alias Model =
     }
 
 
-init : String -> ( Model, Cmd Msg )
-init word =
-    ( { history = []
-      , currentAttempt = emptyRow
-      , selectedCell = 0
-      , correctWord = word
-      , state = Playing
-      , alert = Nothing
-      , triedLetterStates = Dict.empty
-      }
+type alias SavedState =
+    List String
+
+
+initFromSavedState : String -> SavedState -> Model
+initFromSavedState word attempts =
+    let
+        history =
+            attempts
+                |> List.map String.toList
+                |> List.map (compareWords word)
+
+        triedLetterStates =
+            combineLetterStates Dict.empty (List.concat history)
+    in
+    { history = history
+    , currentAttempt = emptyRow
+    , correctWord = word
+    , selectedCell = 0
+    , state =
+        if history |> List.any (List.all (\( _, lS ) -> lS == CorrectPlace)) then
+            Won
+
+        else if List.length history == maxiumAttempts then
+            Lost
+
+        else
+            Playing
+    , alert = Nothing
+    , triedLetterStates = triedLetterStates
+    }
+
+
+init : String -> Maybe SavedState -> ( Model, Cmd Msg )
+init word savedState =
+    ( case savedState of
+        Just saved ->
+            initFromSavedState word saved
+
+        Nothing ->
+            { history = []
+            , currentAttempt = emptyRow
+            , selectedCell = 0
+            , correctWord = word
+            , state = Playing
+            , alert = Nothing
+            , triedLetterStates = Dict.empty
+            }
     , focusFirstCell
     )
 
@@ -147,7 +193,10 @@ update msg model =
                                     else
                                         Playing
                               }
-                            , focusFirstCell
+                            , Cmd.batch
+                                [ focusFirstCell
+                                , saveHistory (List.map convertAttemptToString updatedHistory)
+                                ]
                             )
 
                 _ ->
@@ -390,6 +439,11 @@ activeRow attempt focusedIndex =
 
 
 -- HELPERS
+
+
+convertAttemptToString : Attempt -> String
+convertAttemptToString attempt =
+    List.foldr (String.cons << Tuple.first) "" attempt
 
 
 focusCell : Int -> Cmd Msg
