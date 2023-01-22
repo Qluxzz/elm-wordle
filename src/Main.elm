@@ -152,8 +152,14 @@ toKey keyValue =
 
                 z =
                     90
+
+                space =
+                    32
             in
-            if between a z code then
+            if code == space then
+                Game Game.FocusNextCell
+
+            else if between a z code then
                 Game (Game.CharEntered normalizedChar)
 
             else
