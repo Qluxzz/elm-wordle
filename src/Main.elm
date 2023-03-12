@@ -64,7 +64,12 @@ view model =
             , if List.member gameModel.state [ Game.Won, Game.Lost ] then
                 let
                     resultsView =
-                        gameResultsView gameModel.correctWord [ model.localTime |> Maybe.map timeUntilMidnightView |> Maybe.withDefault (Html.text "") ]
+                        gameResultsView
+                            gameModel.correctWord
+                            [ model.localTime
+                                |> Maybe.map timeUntilMidnightView
+                                |> Maybe.withDefault (Html.text "")
+                            ]
                 in
                 case gameModel.state of
                     Game.Won ->
