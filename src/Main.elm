@@ -5,8 +5,11 @@ import Browser.Events exposing (onKeyUp)
 import FiveLetterWords exposing (getRandomWord, wordsLength)
 import Game
 import Html exposing (..)
+import Html.Attributes as HA
 import Json.Decode as Decode
 import Random
+import Task
+import Time
 
 
 
@@ -34,12 +37,19 @@ type State
 
 type Msg
     = Game Game.Msg
+    | Tick Time.Posix
+    | LocalTime LocalTime
     | NoOp
 
 
 type alias Model =
     { state : State
+    , localTime : Maybe LocalTime
     }
+
+
+type alias LocalTime =
+    ( Time.Posix, Time.Zone )
 
 
 
@@ -48,13 +58,51 @@ type alias Model =
 
 view : Model -> List (Html Msg)
 view model =
-    [ case model.state of
+    case model.state of
         Playing gameModel ->
-            Html.map Game (Game.view gameModel)
+            [ Html.map Game (Game.view gameModel)
+            , if List.member gameModel.state [ Game.Won, Game.Lost ] then
+                let
+                    resultsView =
+                        gameResultsView gameModel.correctWord [ model.localTime |> Maybe.map timeUntilMidnightView |> Maybe.withDefault (Html.text "") ]
+                in
+                case gameModel.state of
+                    Game.Won ->
+                        resultsView "You won!"
+
+                    Game.Lost ->
+                        resultsView ("You lost! The correct word was " ++ gameModel.correctWord)
+
+                    _ ->
+                        Html.text ""
+
+              else
+                Html.text ""
+            ]
 
         Error message ->
-            div [] [ text message ]
-    ]
+            [ div [] [ text message ]
+            ]
+
+
+timeUntilMidnightView : LocalTime -> Html msg
+timeUntilMidnightView localTime =
+    Html.text ("Next word in: " ++ timeUntilMidnight localTime)
+
+
+gameResultsView : String -> List (Html Msg) -> String -> Html Msg
+gameResultsView correctWord extra resultText =
+    div [ HA.class "overlay" ]
+        ([ h1 [ HA.style "text-align" "center" ]
+            [ text resultText ]
+         , a
+            [ HA.href ("https://www.merriam-webster.com/dictionary/" ++ String.toLower correctWord)
+            , HA.target "_blank"
+            ]
+            [ text ("Dictionary entry for \"" ++ String.toLower correctWord ++ "\"") ]
+         ]
+            ++ extra
+        )
 
 
 
@@ -79,6 +127,12 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
+        Tick time ->
+            ( { model | localTime = Maybe.map (Tuple.mapFirst (\_ -> time)) model.localTime }, Cmd.none )
+
+        LocalTime timeAndZone ->
+            ( { model | localTime = Just timeAndZone }, Cmd.none )
+
 
 
 -- MAIN
@@ -100,7 +154,12 @@ main =
                 , body = view model
                 }
         , update = \msg -> \model -> update msg model
-        , subscriptions = \_ -> onKeyUp keyDecoder
+        , subscriptions =
+            \_ ->
+                Sub.batch
+                    [ onKeyUp keyDecoder
+                    , Time.every 1000 Tick
+                    ]
         }
 
 
@@ -120,10 +179,15 @@ startNewGame seed savedState =
                 ( gameModel, cmd ) =
                     Game.init word savedState
             in
-            ( { state = Playing gameModel }, Cmd.map Game cmd )
+            ( { state = Playing gameModel, localTime = Nothing }
+            , Cmd.batch
+                [ Cmd.map Game cmd
+                , Task.map2 Tuple.pair Time.now Time.here |> Task.perform LocalTime
+                ]
+            )
 
         Nothing ->
-            ( { state = Error "Failed to get random word" }, Cmd.none )
+            ( { state = Error "Failed to get random word", localTime = Nothing }, Cmd.none )
 
 
 keyDecoder : Decode.Decoder Msg
@@ -181,3 +245,20 @@ toKey keyValue =
 
                 _ ->
                     NoOp
+
+
+timeUntilMidnight : LocalTime -> String
+timeUntilMidnight ( now, zone ) =
+    let
+        hours =
+            23 - Time.toHour zone now
+
+        minutes =
+            59 - Time.toMinute zone now
+
+        seconds =
+            59 - Time.toSecond zone now
+    in
+    [ hours, minutes, seconds ]
+        |> List.map (String.fromInt >> String.padLeft 2 '0')
+        |> String.join ":"

@@ -3,6 +3,7 @@ port module Game exposing
     , Model
     , Msg(..)
     , SavedState
+    , State(..)
     , compareWords
     , init
     , update
@@ -327,28 +328,6 @@ view model =
             )
         , keyboardView model.triedLetterStates canSubmitAttempt canClearAttempt
         , alertDialog
-        , case model.state of
-            Won ->
-                gameResultsView model.correctWord "You won!"
-
-            Lost ->
-                gameResultsView model.correctWord ("You lost! The correct word was " ++ model.correctWord)
-
-            Playing ->
-                text ""
-        ]
-
-
-gameResultsView : String -> String -> Html Msg
-gameResultsView correctWord resultText =
-    div [ HA.class "overlay" ]
-        [ h1 [ HA.style "text-align" "center" ]
-            [ text resultText ]
-        , a
-            [ HA.href ("https://www.merriam-webster.com/dictionary/" ++ String.toLower correctWord)
-            , HA.target "_blank"
-            ]
-            [ text ("Dictionary entry for \"" ++ String.toLower correctWord ++ "\"") ]
         ]
 
 
