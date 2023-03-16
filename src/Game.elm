@@ -460,6 +460,30 @@ validateAttempt correct attempt =
         Just (compareWords correct attempt)
 
 
+countByChar : String -> Dict Char Int
+countByChar input =
+    String.foldl
+        (\char ->
+            \acc ->
+                Dict.update
+                    char
+                    (Maybe.map ((+) 1) >> Maybe.withDefault 1 >> Just)
+                    acc
+        )
+        Dict.empty
+        input
+
+
+charRemains : Char -> Dict Char Int -> Bool
+charRemains char dict =
+    case Dict.get char dict of
+        Just v ->
+            v > 0
+
+        Nothing ->
+            False
+
+
 compareWords : String -> List Char -> List Letter
 compareWords correct attempt =
     let
@@ -474,52 +498,15 @@ compareWords correct attempt =
                         else
                             c
                 )
-                (String.foldl
-                    (\char ->
-                        \acc ->
-                            Dict.update
-                                char
-                                (\mV ->
-                                    Just
-                                        (case mV of
-                                            Just v ->
-                                                v + 1
-
-                                            Nothing ->
-                                                1
-                                        )
-                                )
-                                acc
-                    )
-                    Dict.empty
-                    correct
-                )
+                (countByChar correct)
                 (List.map2 Tuple.pair (String.toList correct) attempt)
 
         decreaseCount : Char -> Dict Char Int -> Dict Char Int
         decreaseCount char dict =
             Dict.update
                 char
-                (\mV ->
-                    Just
-                        (case mV of
-                            Just v ->
-                                Basics.max 0 (v - 1)
-
-                            Nothing ->
-                                0
-                        )
-                )
+                (Maybe.map (\v -> Basics.max 0 (v - 1)) >> Maybe.withDefault 0 >> Just)
                 dict
-
-        charRemains : Char -> Dict Char Int -> Bool
-        charRemains char dict =
-            case Dict.get char dict of
-                Just v ->
-                    v > 0
-
-                Nothing ->
-                    False
     in
     Tuple.second
         (List.foldl
