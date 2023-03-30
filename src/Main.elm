@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Browser.Events exposing (onKeyUp)
+import Browser.Navigation exposing (reload)
 import FiveLetterWords exposing (getRandomWord, wordsLength)
 import Game
 import Html exposing (..)
@@ -133,7 +134,18 @@ update msg model =
             ( model, Cmd.none )
 
         Tick time ->
-            ( { model | localTime = Maybe.map (Tuple.mapFirst (\_ -> time)) model.localTime }, Cmd.none )
+            let
+                shouldRefresh =
+                    Maybe.map (\localTime -> shouldRefreshBrowser localTime time) model.localTime
+                        |> Maybe.withDefault False
+            in
+            ( { model | localTime = Maybe.map (Tuple.mapFirst (\_ -> time)) model.localTime }
+            , if shouldRefresh then
+                reload
+
+              else
+                Cmd.none
+            )
 
         LocalTime timeAndZone ->
             ( { model | localTime = Just timeAndZone }, Cmd.none )
@@ -267,3 +279,12 @@ timeUntilMidnight ( now, zone ) =
     [ hours, minutes, seconds ]
         |> List.map (String.fromInt >> String.padLeft 2 '0')
         |> String.join ":"
+
+
+shouldRefreshBrowser : LocalTime -> Time.Posix -> Bool
+shouldRefreshBrowser ( before, tz ) after =
+    let
+        day =
+            Time.toDay tz
+    in
+    day after > day before
