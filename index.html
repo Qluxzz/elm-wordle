@@ -18,7 +18,7 @@
 
         const [year, month, date] = [
             now.getFullYear(),
-            now.getMonth() + 1,
+            now.getMonth() + 1, // getMonth is zero indexed
             now.getDate()
         ]
 
@@ -39,9 +39,13 @@
             }
         })
 
-        app.ports.saveHistory.subscribe(message =>
-            localStorage.setItem(key, JSON.stringify(message))
+        app.ports.saveHistory.subscribe(history =>
+            localStorage.setItem(key, JSON.stringify(history))
         )
+
+        app.ports.shareResult.subscribe(async result => {
+            await navigator.clipboard.writeText(result)
+        })
     </script>
 </body>
 

@@ -1,4 +1,4 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Browser
 import Browser.Events exposing (onKeyUp)
@@ -7,7 +7,9 @@ import FiveLetterWords exposing (getRandomWord, wordsLength)
 import Game
 import Html exposing (..)
 import Html.Attributes as HA
+import Html.Events
 import Json.Decode as Decode
+import Platform.Cmd as Cmd
 import Random
 import Task
 import Time
@@ -40,6 +42,7 @@ type Msg
     = Game Game.Msg
     | Tick Time.Posix
     | LocalTime LocalTime
+    | ShareResult -- Copies the result of the game to the clipboard to be shared
     | NoOp
 
 
@@ -51,6 +54,9 @@ type alias Model =
 
 type alias LocalTime =
     ( Time.Posix, Time.Zone )
+
+
+port shareResult : String -> Cmd msg
 
 
 
@@ -70,6 +76,7 @@ view model =
                             [ model.localTime
                                 |> Maybe.map timeUntilMidnightView
                                 |> Maybe.withDefault (Html.text "")
+                            , Html.button [ Html.Events.onClick ShareResult ] [ Html.text "Share!" ]
                             ]
                 in
                 case gameModel.state of
@@ -149,6 +156,40 @@ update msg model =
 
         LocalTime timeAndZone ->
             ( { model | localTime = Just timeAndZone }, Cmd.none )
+
+        ShareResult ->
+            case model.state of
+                Playing gameModel ->
+                    let
+                        formatted =
+                            gameModel.history
+                                |> List.map
+                                    (\attempt ->
+                                        List.map
+                                            (\( _, state ) ->
+                                                case state of
+                                                    Game.CorrectPlace ->
+                                                        "🟩"
+
+                                                    Game.IncorrectPlace ->
+                                                        "🟨"
+
+                                                    Game.NotIncluded ->
+                                                        "⬜"
+
+                                                    -- TODO: A letter used in an attempt can never have this state
+                                                    Game.NotTried ->
+                                                        "🟥"
+                                            )
+                                            attempt
+                                    )
+                                |> List.map (String.join "")
+                                |> String.join "\n"
+                    in
+                    ( model, shareResult formatted )
+
+                _ ->
+                    ( model, Cmd.none )
 
 
 

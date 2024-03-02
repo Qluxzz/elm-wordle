@@ -1,0 +1,15 @@
+{
+  "name": "elm-wordle",
+  "version": "1.0.0",
+  "description": "A clone of the popular word guessing game Wordle.",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "npx elm-test"
+  },
+  "devDependencies": {
+    "elm-format": "^0.8.7",
+    "elm-test": "^0.19.1-revision12"
+  }
+}
