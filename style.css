@@ -69,6 +69,7 @@ body {
     background: #ccc;
     color: black;
     border-radius: 5px;
+    font-size: 16px;
 }
 
 .keyboard-row>div.disabled {
