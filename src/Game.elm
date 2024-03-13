@@ -42,8 +42,8 @@ maxiumAttempts =
     6
 
 
-emptyRow : Array (Maybe Char)
-emptyRow =
+newRow : Array (Maybe Char)
+newRow =
     Array.initialize defaultRowLength (\_ -> Nothing)
 
 
@@ -95,7 +95,7 @@ initFromSavedState word attempts =
             combineLetterStates Dict.empty (List.concat history)
     in
     { history = history
-    , currentAttempt = emptyRow
+    , currentAttempt = newRow
     , correctWord = word
     , selectedCell = 0
     , state =
@@ -120,7 +120,7 @@ init word savedState =
 
         Nothing ->
             { history = []
-            , currentAttempt = emptyRow
+            , currentAttempt = newRow
             , selectedCell = 0
             , correctWord = word
             , state = Playing
@@ -154,7 +154,7 @@ update msg model =
                     case validateAttempt model.correctWord attempt of
                         Nothing ->
                             ( { model
-                                | currentAttempt = emptyRow
+                                | currentAttempt = newRow
                                 , alert =
                                     let
                                         word =
@@ -179,7 +179,7 @@ update msg model =
                             in
                             ( { model
                                 | history = updatedHistory
-                                , currentAttempt = emptyRow
+                                , currentAttempt = newRow
                                 , triedLetterStates =
                                     combineLetterStates
                                         model.triedLetterStates
@@ -319,12 +319,13 @@ view model =
             (List.map
                 historicRow
                 model.history
-                ++ [ if model.state == Playing then
+                ++ (if model.state == Playing then
                         activeRow model.currentAttempt model.selectedCell
 
-                     else
+                    else
                         text ""
-                   ]
+                   )
+                :: List.repeat (maxiumAttempts - List.length model.history - 1) emptyRow
             )
         , keyboardView model.triedLetterStates canSubmitAttempt canClearAttempt
         , alertDialog
@@ -414,6 +415,14 @@ activeRow attempt focusedIndex =
                 )
             |> Array.toList
         )
+
+
+emptyRow : Html Msg
+emptyRow =
+    div
+        [ HA.class "empty-row"
+        ]
+        (List.range 0 (defaultRowLength - 1) |> List.map (\_ -> div [] []))
 
 
 
