@@ -41,7 +41,7 @@ type State
 type Msg
     = Game Game.Msg
     | Tick Time.Posix
-    | LocalTime LocalTime
+    | GetLocalTime LocalTime
     | ShareResult -- Copies the result of the game to the clipboard to be shared
     | NoOp
 
@@ -49,11 +49,12 @@ type Msg
 type alias Model =
     { state : State
     , localTime : Maybe LocalTime
+    , shared : Bool -- If the results of todays puzzle has been shared
     }
 
 
 type alias LocalTime =
-    ( Time.Posix, Time.Zone )
+    { posix : Time.Posix, timeZone : Time.Zone }
 
 
 port shareResult : String -> Cmd msg
@@ -76,7 +77,15 @@ view model =
                             [ model.localTime
                                 |> Maybe.map timeUntilMidnightView
                                 |> Maybe.withDefault (Html.text "")
-                            , Html.button [ Html.Events.onClick ShareResult ] [ Html.text "Share!" ]
+                            , Html.button [ HA.id "share-button", Html.Events.onClick ShareResult ]
+                                [ Html.text
+                                    (if model.shared then
+                                        "Shared!"
+
+                                     else
+                                        "Share!"
+                                    )
+                                ]
                             ]
                 in
                 case gameModel.state of
@@ -146,7 +155,7 @@ update msg model =
                     Maybe.map (\localTime -> shouldRefreshBrowser localTime time) model.localTime
                         |> Maybe.withDefault False
             in
-            ( { model | localTime = Maybe.map (Tuple.mapFirst (\_ -> time)) model.localTime }
+            ( { model | localTime = Maybe.map (\l -> { l | posix = time }) model.localTime }
             , if shouldRefresh then
                 reload
 
@@ -154,12 +163,12 @@ update msg model =
                 Cmd.none
             )
 
-        LocalTime timeAndZone ->
+        GetLocalTime timeAndZone ->
             ( { model | localTime = Just timeAndZone }, Cmd.none )
 
         ShareResult ->
-            case model.state of
-                Playing gameModel ->
+            case ( model.state, model.localTime ) of
+                ( Playing gameModel, Just localTime ) ->
                     let
                         formatted =
                             gameModel.history
@@ -185,8 +194,11 @@ update msg model =
                                     )
                                 |> List.map (String.join "")
                                 |> String.join "\n"
+
+                        date =
+                            toIsoDate localTime
                     in
-                    ( model, shareResult formatted )
+                    ( { model | shared = True }, shareResult <| "Wordle " ++ date ++ "\n" ++ formatted )
 
                 _ ->
                     ( model, Cmd.none )
@@ -237,15 +249,15 @@ startNewGame seed savedState =
                 ( gameModel, cmd ) =
                     Game.init word savedState
             in
-            ( { state = Playing gameModel, localTime = Nothing }
+            ( { state = Playing gameModel, localTime = Nothing, shared = False }
             , Cmd.batch
                 [ Cmd.map Game cmd
-                , Task.map2 Tuple.pair Time.now Time.here |> Task.perform LocalTime
+                , Task.map2 LocalTime Time.now Time.here |> Task.perform GetLocalTime
                 ]
             )
 
         Nothing ->
-            ( { state = Error "Failed to get random word", localTime = Nothing }, Cmd.none )
+            ( { state = Error "Failed to get random word", localTime = Nothing, shared = False }, Cmd.none )
 
 
 keyDecoder : Decode.Decoder Msg
@@ -306,26 +318,81 @@ toKey keyValue =
 
 
 timeUntilMidnight : LocalTime -> String
-timeUntilMidnight ( now, zone ) =
+timeUntilMidnight { posix, timeZone } =
     let
         hours =
-            23 - Time.toHour zone now
+            23 - Time.toHour timeZone posix
 
         minutes =
-            59 - Time.toMinute zone now
+            59 - Time.toMinute timeZone posix
 
         seconds =
-            59 - Time.toSecond zone now
+            59 - Time.toSecond timeZone posix
     in
     [ hours, minutes, seconds ]
-        |> List.map (String.fromInt >> String.padLeft 2 '0')
+        |> List.map padWithZero
         |> String.join ":"
 
 
 shouldRefreshBrowser : LocalTime -> Time.Posix -> Bool
-shouldRefreshBrowser ( before, tz ) after =
+shouldRefreshBrowser before after =
     let
         day =
-            Time.toDay tz
+            Time.toDay before.timeZone
     in
-    day after > day before
+    day after > day before.posix
+
+
+padWithZero : Int -> String
+padWithZero =
+    String.fromInt >> String.padLeft 2 '0'
+
+
+toIsoDate : LocalTime -> String
+toIsoDate { posix, timeZone } =
+    let
+        year =
+            Time.toYear timeZone posix
+
+        month =
+            case Time.toMonth timeZone posix of
+                Time.Jan ->
+                    1
+
+                Time.Feb ->
+                    2
+
+                Time.Mar ->
+                    3
+
+                Time.Apr ->
+                    4
+
+                Time.May ->
+                    5
+
+                Time.Jun ->
+                    6
+
+                Time.Jul ->
+                    7
+
+                Time.Aug ->
+                    8
+
+                Time.Sep ->
+                    9
+
+                Time.Oct ->
+                    10
+
+                Time.Nov ->
+                    11
+
+                Time.Dec ->
+                    12
+
+        date =
+            Time.toDay timeZone posix
+    in
+    String.fromInt year ++ "-" ++ padWithZero month ++ "-" ++ padWithZero date
