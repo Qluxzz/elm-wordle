@@ -204,14 +204,6 @@ update msg model =
                     ( model, Cmd.none )
 
         CharEntered char ->
-            let
-                focusNextCell =
-                    if model.selectedCell + 1 < defaultRowLength then
-                        focusCell (model.selectedCell + 1)
-
-                    else
-                        Cmd.none
-            in
             ( { model
                 | currentAttempt =
                     Array.set
@@ -219,7 +211,7 @@ update msg model =
                         (Just char)
                         model.currentAttempt
               }
-            , focusNextCell
+            , focusCell (nextCell model.selectedCell)
             )
 
         {-
@@ -228,25 +220,13 @@ update msg model =
         -}
         RemoveChar ->
             let
-                unwrappedValue : Maybe Char
-                unwrappedValue =
-                    Array.get
-                        model.selectedCell
-                        model.currentAttempt
-                        |> Maybe.andThen (\v -> v)
-
-                clearIndex : Int
                 clearIndex =
-                    case unwrappedValue of
-                        Nothing ->
-                            if model.selectedCell > 0 then
-                                model.selectedCell - 1
-
-                            else
-                                model.selectedCell
-
-                        Just _ ->
+                    case Array.get model.selectedCell model.currentAttempt of
+                        Just (Just _) ->
                             model.selectedCell
+
+                        _ ->
+                            previousCell model.selectedCell
             in
             ( { model | currentAttempt = Array.set clearIndex Nothing model.currentAttempt }
             , focusCell clearIndex
@@ -257,20 +237,12 @@ update msg model =
 
         FocusPreviousCell ->
             ( model
-            , if model.selectedCell - 1 >= 0 then
-                focusCell (model.selectedCell - 1)
-
-              else
-                Cmd.none
+            , focusCell (previousCell model.selectedCell)
             )
 
         FocusNextCell ->
             ( model
-            , if model.selectedCell + 1 < defaultRowLength then
-                focusCell (model.selectedCell + 1)
-
-              else
-                Cmd.none
+            , focusCell (nextCell model.selectedCell)
             )
 
         ClearAlert ->
@@ -284,38 +256,9 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        alertDialog =
-            case model.alert of
-                Just alert ->
-                    div [ HA.class "alert" ] [ text alert ]
-
-                Nothing ->
-                    text ""
-
         currentAttemptChars : List (Maybe Char)
         currentAttemptChars =
             Array.toList model.currentAttempt
-
-        cellHasChar : Maybe Char -> Bool
-        cellHasChar c =
-            case c of
-                Just _ ->
-                    True
-
-                Nothing ->
-                    False
-
-        canClearAttempt : Bool
-        canClearAttempt =
-            List.any
-                cellHasChar
-                currentAttemptChars
-
-        canSubmitAttempt : Bool
-        canSubmitAttempt =
-            List.all
-                cellHasChar
-                currentAttemptChars
     in
     div [ HA.class "game" ]
         [ div
@@ -331,20 +274,28 @@ view model =
                    )
                 :: List.repeat (maxiumAttempts - List.length model.history - 1) emptyRow
             )
-        , keyboardView model.triedLetterStates canSubmitAttempt canClearAttempt
-        , alertDialog
+        , keyboardView
+            model.triedLetterStates
+            (canSubmitAttempt currentAttemptChars)
+            (canClearAttempt currentAttemptChars)
+        , case model.alert of
+            Just alert ->
+                div [ HA.class "alert" ] [ text alert ]
+
+            Nothing ->
+                text ""
         ]
 
 
 keyboardView : Dict Char LetterState -> Bool -> Bool -> Html Msg
-keyboardView triedLetters canSubmitAttempt canClearAttempt =
+keyboardView triedLetters canSubmit canClear =
     let
         row : List Char -> List (Html Msg)
         row letters =
             letters
                 |> List.map
                     (\char ->
-                        div
+                        button
                             [ HA.style "background" (backgroundColor (Maybe.withDefault NotTried (Dict.get char triedLetters)))
                             , HE.onClick (CharEntered char)
                             ]
@@ -353,8 +304,8 @@ keyboardView triedLetters canSubmitAttempt canClearAttempt =
 
         clearButton : Html Msg
         clearButton =
-            div
-                [ HA.classList [ ( "disabled", not canClearAttempt ) ]
+            button
+                [ HA.classList [ ( "disabled", not canClear ) ]
                 , HE.onClick RemoveChar
                 ]
                 [ text "⬅️"
@@ -362,8 +313,8 @@ keyboardView triedLetters canSubmitAttempt canClearAttempt =
 
         submitButton : Html Msg
         submitButton =
-            div
-                [ HA.classList [ ( "disabled", not canSubmitAttempt ) ]
+            button
+                [ HA.classList [ ( "disabled", not canSubmit ) ]
                 , HE.onClick SubmitAttempt
                 , HA.style "flex-shrink" "0"
                 , HA.style "flex-basis" "34px"
@@ -405,7 +356,7 @@ activeRow attempt focusedIndex =
                 (\index ->
                     \char ->
                         div
-                            [ HA.style "id" ("cell" ++ String.fromInt index)
+                            [ HA.id <| "cell" ++ String.fromInt index
                             , HA.classList [ ( "selected", focusedIndex == index ) ]
                             , HE.onFocus (FocusedInput index)
                             , HE.onClick (FocusedInput index)
@@ -446,6 +397,16 @@ focusCell id =
 focusFirstCell : Cmd Msg
 focusFirstCell =
     focusCell 0
+
+
+nextCell : Int -> Int
+nextCell selected =
+    min (selected + 1) defaultRowLength
+
+
+previousCell : Int -> Int
+previousCell selected =
+    max (selected - 1) 0
 
 
 backgroundColor : LetterState -> String
@@ -588,3 +549,28 @@ combineLetterStates letterStates attemp =
         )
         letterStates
         attemp
+
+
+type alias Cell =
+    Maybe Char
+
+
+cellHasChar : Cell -> Bool
+cellHasChar c =
+    case c of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
+
+
+canClearAttempt : List (Maybe Char) -> Bool
+canClearAttempt =
+    List.any cellHasChar
+
+
+canSubmitAttempt : List (Maybe Char) -> Bool
+canSubmitAttempt =
+    List.all
+        cellHasChar

@@ -57,7 +57,7 @@ body {
     gap: 4px;
 }
 
-.keyboard-row>div {
+.keyboard-row>button {
     font-size: 100%;
     flex-grow: 1;
     flex-basis: 1ch;
@@ -70,9 +70,10 @@ body {
     color: black;
     border-radius: 5px;
     font-size: 16px;
+    border: 1px solid #ddd;
 }
 
-.keyboard-row>div.disabled {
+.keyboard-row>button.disabled {
     background: #fff;
     pointer-events: none;
     border: 1px solid #ddd;
