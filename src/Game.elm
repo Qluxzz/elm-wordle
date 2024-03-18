@@ -206,7 +206,11 @@ update msg model =
         CharEntered char ->
             let
                 focusNextCell =
-                    focusCell (model.selectedCell + 1)
+                    if model.selectedCell + 1 < defaultRowLength then
+                        focusCell (model.selectedCell + 1)
+
+                    else
+                        Cmd.none
             in
             ( { model
                 | currentAttempt =
