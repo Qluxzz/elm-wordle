@@ -185,10 +185,6 @@ update msg model =
 
                                                     Game.NotIncluded ->
                                                         "⬜"
-
-                                                    -- TODO: A letter used in an attempt can never have this state
-                                                    Game.NotTried ->
-                                                        "🟥"
                                             )
                                             attempt
                                     )

@@ -51,7 +51,6 @@ type LetterState
     = CorrectPlace
     | IncorrectPlace
     | NotIncluded
-    | NotTried
 
 
 type alias Letter =
@@ -296,9 +295,15 @@ keyboardView triedLetters canSubmit canClear =
                 |> List.map
                     (\char ->
                         div
-                            [ HA.style "background" (backgroundColor (Maybe.withDefault NotTried (Dict.get char triedLetters)))
-                            , HE.onClick (CharEntered char)
-                            ]
+                            (HE.onClick (CharEntered char)
+                                :: (case Dict.get char triedLetters of
+                                        Just c ->
+                                            [ HA.style "background" (backgroundColor c) ]
+
+                                        Nothing ->
+                                            []
+                                   )
+                            )
                             [ text (char |> Char.toUpper |> String.fromChar) ]
                     )
 
@@ -418,9 +423,6 @@ backgroundColor state =
         CorrectPlace ->
             "rgb(0, 190, 0)"
 
-        NotTried ->
-            "rgb(225, 225, 225)"
-
         IncorrectPlace ->
             "#ffb01e"
 
@@ -511,9 +513,6 @@ letterStateOrder x =
 
         NotIncluded ->
             2
-
-        NotTried ->
-            3
 
 
 sortByLetterState : LetterState -> LetterState -> Order
