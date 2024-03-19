@@ -401,7 +401,7 @@ focusFirstCell =
 
 nextCell : Int -> Int
 nextCell selected =
-    min (selected + 1) defaultRowLength
+    min (selected + 1) (defaultRowLength - 1)
 
 
 previousCell : Int -> Int
