@@ -295,7 +295,7 @@ keyboardView triedLetters canSubmit canClear =
             letters
                 |> List.map
                     (\char ->
-                        button
+                        div
                             [ HA.style "background" (backgroundColor (Maybe.withDefault NotTried (Dict.get char triedLetters)))
                             , HE.onClick (CharEntered char)
                             ]
@@ -304,7 +304,7 @@ keyboardView triedLetters canSubmit canClear =
 
         clearButton : Html Msg
         clearButton =
-            button
+            div
                 [ HA.classList [ ( "disabled", not canClear ) ]
                 , HE.onClick RemoveChar
                 ]
@@ -313,7 +313,7 @@ keyboardView triedLetters canSubmit canClear =
 
         submitButton : Html Msg
         submitButton =
-            button
+            div
                 [ HA.classList [ ( "disabled", not canSubmit ) ]
                 , HE.onClick SubmitAttempt
                 , HA.style "flex-shrink" "0"

@@ -57,7 +57,11 @@ body {
     gap: 4px;
 }
 
-.keyboard-row>button {
+/* 
+    The keyboard buttons are div's since if they are buttons iOS will
+    zoom the screen if a button is pressed multiple times in rapid succession
+*/
+.keyboard-row>div {
     font-size: 100%;
     flex-grow: 1;
     flex-basis: 1ch;
@@ -73,7 +77,7 @@ body {
     border: 1px solid #ddd;
 }
 
-.keyboard-row>button.disabled {
+.keyboard-row>div.disabled {
     background: #fff;
     pointer-events: none;
     border: 1px solid #ddd;
