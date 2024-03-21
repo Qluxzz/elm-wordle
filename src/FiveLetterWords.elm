@@ -30,6 +30,7 @@ getRandomWord index =
 
     else
         words
+            -- This is okay since the list is sorted alphabetically already
             |> Set.toList
             |> List.drop index
             |> List.head
