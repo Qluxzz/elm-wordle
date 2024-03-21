@@ -1,6 +1,5 @@
 module FiveLetterWords exposing (getRandomWord, isValidWord, wordsLength)
 
-import Array
 import Set exposing (Set)
 
 
@@ -11,10 +10,17 @@ isValidWord w =
 
 getRandomWord : Int -> Maybe String
 getRandomWord index =
-    words
-        |> Set.toList
-        |> Array.fromList
-        |> Array.get index
+    if index < 0 then
+        Nothing
+
+    else if index > wordsLength then
+        Nothing
+
+    else
+        words
+            |> Set.toList
+            |> List.drop index
+            |> List.head
 
 
 wordsLength : Int
