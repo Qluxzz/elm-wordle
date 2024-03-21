@@ -8,6 +8,18 @@ isValidWord w =
     Set.member w words
 
 
+{-|
+
+    Get a random word from the set by index
+
+    This is approximatley 30 percent faster than doing
+
+    words
+        |> Set.toList
+        |> Array.fromList
+        |> Array.get index
+
+-}
 getRandomWord : Int -> Maybe String
 getRandomWord index =
     if index < 0 then
