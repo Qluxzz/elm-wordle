@@ -158,7 +158,7 @@ update msg model =
                                     let
                                         word =
                                             List.foldr
-                                                (String.fromChar >> (++))
+                                                String.cons
                                                 ""
                                                 attempt
                                     in
