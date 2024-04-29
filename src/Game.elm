@@ -258,21 +258,23 @@ view model =
         currentAttemptChars : List (Maybe Char)
         currentAttemptChars =
             Array.toList model.currentAttempt
+
+        rows =
+            List.map
+                historicRow
+                model.history
+                ++ List.filterMap identity
+                    [ if model.state == Playing then
+                        Just (activeRow model.currentAttempt model.selectedCell)
+
+                      else
+                        Nothing
+                    ]
     in
     div [ HA.class "game" ]
         [ div
             [ HA.class "rows" ]
-            (List.map
-                historicRow
-                model.history
-                ++ (if model.state == Playing then
-                        activeRow model.currentAttempt model.selectedCell
-
-                    else
-                        text ""
-                   )
-                :: List.repeat (maxiumAttempts - List.length model.history - 1) emptyRow
-            )
+            (rows ++ List.repeat (maxiumAttempts - List.length rows) emptyRow)
         , keyboardView
             model.triedLetterStates
             (canSubmitAttempt currentAttemptChars)
