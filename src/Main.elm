@@ -207,13 +207,14 @@ update msg model =
 type alias Flags =
     { seed : Int
     , save : Maybe (List String)
+    , clearInvalidAttempt : Bool
     }
 
 
 main : Program Flags Model Msg
 main =
     Browser.document
-        { init = \{ seed, save } -> startNewGame seed save
+        { init = startNewGame
         , view =
             \model ->
                 { title = "ELM Wordle"
@@ -233,8 +234,8 @@ main =
 -- Helpers
 
 
-startNewGame : Int -> Maybe Game.SavedState -> ( Model, Cmd Msg )
-startNewGame seed savedState =
+startNewGame : Flags -> ( Model, Cmd Msg )
+startNewGame { seed, save, clearInvalidAttempt } =
     let
         ( index, _ ) =
             Random.step (Random.int 0 wordsLength) (Random.initialSeed seed)
@@ -243,7 +244,7 @@ startNewGame seed savedState =
         Just word ->
             let
                 ( gameModel, cmd ) =
-                    Game.init word savedState
+                    Game.init word save clearInvalidAttempt
             in
             ( { state = Playing gameModel, localTime = Nothing, shared = False }
             , Cmd.batch

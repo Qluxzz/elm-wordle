@@ -37,13 +37,13 @@ defaultRowLength =
     5
 
 
-maxiumAttempts : Int
-maxiumAttempts =
+maximumAttempts : Int
+maximumAttempts =
     6
 
 
-newRow : Array (Maybe Char)
-newRow =
+emptyRow : Array (Maybe Char)
+emptyRow =
     Array.initialize defaultRowLength (\_ -> Nothing)
 
 
@@ -75,6 +75,7 @@ type alias Model =
     , state : State
     , alert : Maybe String
     , triedLetterStates : Dict Char LetterState
+    , clearInvalidAttempt : Bool -- If the row should be cleared after an invalid word was submitted
     }
 
 
@@ -82,7 +83,7 @@ type alias SavedState =
     List String
 
 
-initFromSavedState : String -> SavedState -> Model
+initFromSavedState : String -> List String -> { history : List (List Letter), state : State, triedLetterStates : Dict Char LetterState }
 initFromSavedState word attempts =
     let
         history =
@@ -94,38 +95,47 @@ initFromSavedState word attempts =
             combineLetterStates Dict.empty (List.concat history)
     in
     { history = history
-    , currentAttempt = newRow
-    , correctWord = word
-    , selectedCell = 0
     , state =
         if history |> List.any (List.all (\( _, lS ) -> lS == CorrectPlace)) then
             Won
 
-        else if List.length history == maxiumAttempts then
+        else if List.length history == maximumAttempts then
             Lost
 
         else
             Playing
-    , alert = Nothing
     , triedLetterStates = triedLetterStates
     }
 
 
-init : String -> Maybe SavedState -> ( Model, Cmd Msg )
-init word savedState =
+init : String -> Maybe SavedState -> Bool -> ( Model, Cmd Msg )
+init word savedState clearInvalidAttempt =
+    let
+        baseState =
+            { history = []
+            , currentAttempt = emptyRow
+            , correctWord = word
+            , selectedCell = 0
+            , state = Playing
+            , triedLetterStates = Dict.empty
+            , clearInvalidAttempt = clearInvalidAttempt
+            , alert = Nothing
+            }
+    in
     ( case savedState of
         Just saved ->
-            initFromSavedState word saved
+            let
+                { history, state, triedLetterStates } =
+                    initFromSavedState word saved
+            in
+            { baseState
+                | history = history
+                , state = state
+                , triedLetterStates = triedLetterStates
+            }
 
         Nothing ->
-            { history = []
-            , currentAttempt = newRow
-            , selectedCell = 0
-            , correctWord = word
-            , state = Playing
-            , alert = Nothing
-            , triedLetterStates = Dict.empty
-            }
+            baseState
     , focusFirstCell
     )
 
@@ -152,24 +162,19 @@ update msg model =
                     in
                     case validateAttempt model.correctWord attempt of
                         Nothing ->
-                            ( { model
-                                | currentAttempt = newRow
-                                , alert =
-                                    let
-                                        word =
-                                            List.foldr
-                                                String.cons
-                                                ""
-                                                attempt
-                                    in
-                                    Just (word ++ " is not a valid word!")
-                              }
-                            , Cmd.batch
-                                [ focusFirstCell
-                                , Process.sleep 1500
-                                    |> Task.perform (\_ -> ClearAlert)
-                                ]
-                            )
+                            if model.clearInvalidAttempt then
+                                ( { model
+                                    | currentAttempt = emptyRow
+                                    , alert = createAlert attempt
+                                  }
+                                , Cmd.batch
+                                    [ focusFirstCell
+                                    , clearAlert
+                                    ]
+                                )
+
+                            else
+                                ( { model | alert = createAlert attempt }, clearAlert )
 
                         Just validated ->
                             let
@@ -178,7 +183,7 @@ update msg model =
                             in
                             ( { model
                                 | history = updatedHistory
-                                , currentAttempt = newRow
+                                , currentAttempt = emptyRow
                                 , triedLetterStates =
                                     combineLetterStates
                                         model.triedLetterStates
@@ -187,7 +192,7 @@ update msg model =
                                     if List.all (\( _, lS ) -> lS == CorrectPlace) validated then
                                         Won
 
-                                    else if List.length updatedHistory == maxiumAttempts then
+                                    else if List.length updatedHistory == maximumAttempts then
                                         Lost
 
                                     else
@@ -274,7 +279,7 @@ view model =
     div [ HA.class "game" ]
         [ div
             [ HA.class "rows" ]
-            (rows ++ List.repeat (maxiumAttempts - List.length rows) emptyRow)
+            (rows ++ List.repeat (maximumAttempts - List.length rows) emptyRowView)
         , keyboardView
             model.triedLetterStates
             (canSubmitAttempt currentAttemptChars)
@@ -379,8 +384,8 @@ activeRow attempt focusedIndex =
         )
 
 
-emptyRow : Html Msg
-emptyRow =
+emptyRowView : Html Msg
+emptyRowView =
     div
         [ HA.class "empty-row"
         ]
@@ -575,3 +580,20 @@ canSubmitAttempt : List (Maybe Char) -> Bool
 canSubmitAttempt =
     List.all
         cellHasChar
+
+
+createAlert : List Char -> Maybe String
+createAlert attempt =
+    let
+        word =
+            List.foldr
+                String.cons
+                ""
+                attempt
+    in
+    Just (word ++ " is not a valid word!")
+
+
+clearAlert : Cmd Msg
+clearAlert =
+    Process.sleep 1500 |> Task.perform (\_ -> ClearAlert)
