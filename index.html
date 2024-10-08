@@ -38,12 +38,14 @@
             }
         }
 
+        const savedSettings = localStorage.getItem("settings")
+
         const app = Elm.Main.init({
             node: document.getElementById("elm"),
             flags: {
                 seed,
                 save: savedState ? JSON.parse(savedState) : null,
-                clearInvalidAttempt: (localStorage.getItem("clearInvalidAttempt") ?? "true") === "true"
+                settings: savedSettings ? JSON.parse(savedSettings) : null
             }
         })
 
@@ -54,6 +56,10 @@
         app.ports.shareResult.subscribe(async result => {
             await navigator.clipboard.writeText(result)
         })
+
+        app.ports.persistSettings.subscribe(settings =>
+            localStorage.setItem("settings", JSON.stringify(settings))
+        )
     </script>
 </body>
 

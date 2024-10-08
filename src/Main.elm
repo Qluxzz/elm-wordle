@@ -44,12 +44,18 @@ type Msg
     | GetLocalTime LocalTime
     | ShareResult -- Copies the result of the game to the clipboard to be shared
     | NoOp
+      -- Settings
+    | ShowSettings
+    | HideSettings
+    | ToggleClearInvalidAttempt Bool
 
 
 type alias Model =
     { state : State
     , localTime : Maybe LocalTime
     , shared : Bool -- If the results of todays puzzle has been shared
+    , showSettings : Bool
+    , settings : Settings
     }
 
 
@@ -60,51 +66,61 @@ type alias LocalTime =
 port shareResult : String -> Cmd msg
 
 
+port persistSettings : Settings -> Cmd msg
+
+
 
 -- VIEW
 
 
 view : Model -> List (Html Msg)
 view model =
-    case model.state of
-        Playing gameModel ->
-            [ Html.map Game (Game.view gameModel)
-            , if List.member gameModel.state [ Game.Won, Game.Lost ] then
-                let
-                    resultsView =
-                        gameResultsView
-                            gameModel.correctWord
-                            [ model.localTime
-                                |> Maybe.map timeUntilMidnightView
-                                |> Maybe.withDefault (Html.text "")
-                            , Html.button [ HA.id "share-button", Html.Events.onClick ShareResult ]
-                                [ Html.text
-                                    (if model.shared then
-                                        "Shared!"
+    headerView
+        :: (case model.state of
+                Playing gameModel ->
+                    [ Html.map Game (Game.view gameModel)
+                    , if List.member gameModel.state [ Game.Won, Game.Lost ] then
+                        let
+                            resultsView =
+                                gameResultsView
+                                    gameModel.correctWord
+                                    [ model.localTime
+                                        |> Maybe.map timeUntilMidnightView
+                                        |> Maybe.withDefault (Html.text "")
+                                    , Html.button [ HA.id "share-button", Html.Events.onClick ShareResult ]
+                                        [ Html.text
+                                            (if model.shared then
+                                                "Shared!"
 
-                                     else
-                                        "Share!"
-                                    )
-                                ]
-                            ]
-                in
-                case gameModel.state of
-                    Game.Won ->
-                        resultsView "You won!"
+                                             else
+                                                "Share!"
+                                            )
+                                        ]
+                                    ]
+                        in
+                        case gameModel.state of
+                            Game.Won ->
+                                resultsView "You won!"
 
-                    Game.Lost ->
-                        resultsView ("You lost! The correct word was " ++ gameModel.correctWord)
+                            Game.Lost ->
+                                resultsView ("You lost! The correct word was " ++ gameModel.correctWord)
 
-                    _ ->
+                            _ ->
+                                Html.text ""
+
+                      else
                         Html.text ""
+                    ]
 
-              else
+                Error message ->
+                    [ div [] [ text message ] ]
+           )
+        ++ [ if model.showSettings then
+                settingsView model.settings
+
+             else
                 Html.text ""
-            ]
-
-        Error message ->
-            [ div [] [ text message ]
-            ]
+           ]
 
 
 timeUntilMidnightView : LocalTime -> Html msg
@@ -125,6 +141,23 @@ gameResultsView correctWord extra resultText =
          ]
             ++ extra
         )
+
+
+headerView : Html Msg
+headerView =
+    Html.header []
+        [ Html.h1 [] [ Html.text "Elm Wordle" ]
+        , Html.button [ Html.Events.onClick ShowSettings ] [ Html.text "⚙️" ]
+        ]
+
+
+settingsView : Settings -> Html Msg
+settingsView settings =
+    Html.div [ HA.id "settings" ]
+        [ Html.h2 [] [ Html.text "Settings" ]
+        , Html.p [] [ Html.text "Clear letters after invalid attempt?", Html.input [ Html.Events.onCheck ToggleClearInvalidAttempt, HA.type_ "checkbox", HA.style "margin-left" "10px", HA.checked settings.clearInvalidAttempt ] [] ]
+        , Html.button [ Html.Events.onClick HideSettings ] [ Html.text "Close" ]
+        ]
 
 
 
@@ -199,6 +232,22 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        ShowSettings ->
+            ( { model | showSettings = True }, Cmd.none )
+
+        HideSettings ->
+            ( { model | showSettings = False }, Cmd.none )
+
+        ToggleClearInvalidAttempt value ->
+            let
+                settings =
+                    model.settings
+
+                updatedSettings =
+                    { settings | clearInvalidAttempt = value }
+            in
+            ( { model | settings = updatedSettings }, persistSettings updatedSettings )
+
 
 
 -- MAIN
@@ -207,7 +256,18 @@ update msg model =
 type alias Flags =
     { seed : Int
     , save : Maybe (List String)
-    , clearInvalidAttempt : Bool
+    , settings : Maybe Settings
+    }
+
+
+type alias Settings =
+    { clearInvalidAttempt : Bool -- If the user pressed submit and the attempt was not a word found in the dictionary, should the attempt be cleared or kept?
+    }
+
+
+defaultSettings : Settings
+defaultSettings =
+    { clearInvalidAttempt = False
     }
 
 
@@ -235,18 +295,30 @@ main =
 
 
 startNewGame : Flags -> ( Model, Cmd Msg )
-startNewGame { seed, save, clearInvalidAttempt } =
+startNewGame { seed, save, settings } =
     let
         ( index, _ ) =
             Random.step (Random.int 0 wordsLength) (Random.initialSeed seed)
+
+        initSettings =
+            settings |> Maybe.withDefault defaultSettings
+
+        defaultModel : Model
+        defaultModel =
+            { state = Error "Failed to get random word"
+            , localTime = Nothing
+            , shared = False
+            , showSettings = False
+            , settings = initSettings
+            }
     in
     case getRandomWord index of
         Just word ->
             let
                 ( gameModel, cmd ) =
-                    Game.init word save clearInvalidAttempt
+                    Game.init word save initSettings.clearInvalidAttempt
             in
-            ( { state = Playing gameModel, localTime = Nothing, shared = False }
+            ( { defaultModel | state = Playing gameModel }
             , Cmd.batch
                 [ Cmd.map Game cmd
                 , Task.map2 LocalTime Time.now Time.here |> Task.perform GetLocalTime
@@ -254,7 +326,7 @@ startNewGame { seed, save, clearInvalidAttempt } =
             )
 
         Nothing ->
-            ( { state = Error "Failed to get random word", localTime = Nothing, shared = False }, Cmd.none )
+            ( defaultModel, Cmd.none )
 
 
 keyDecoder : Decode.Decoder Msg
