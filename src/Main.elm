@@ -11,6 +11,7 @@ import Html.Events
 import Json.Decode as Decode
 import Platform.Cmd as Cmd
 import Random
+import Settings exposing (Settings)
 import Task
 import Time
 
@@ -172,7 +173,7 @@ update msg model =
                 Playing gameModel ->
                     let
                         ( updatedModel, cmd ) =
-                            Game.update gameMsg gameModel
+                            Game.update gameMsg gameModel model.settings
                     in
                     ( { model | state = Playing updatedModel }, Cmd.map Game cmd )
 
@@ -260,11 +261,6 @@ type alias Flags =
     }
 
 
-type alias Settings =
-    { clearInvalidAttempt : Bool -- If the user pressed submit and the attempt was not a word found in the dictionary, should the attempt be cleared or kept?
-    }
-
-
 defaultSettings : Settings
 defaultSettings =
     { clearInvalidAttempt = False
@@ -316,7 +312,7 @@ startNewGame { seed, save, settings } =
         Just word ->
             let
                 ( gameModel, cmd ) =
-                    Game.init word save initSettings.clearInvalidAttempt
+                    Game.init word save
             in
             ( { defaultModel | state = Playing gameModel }
             , Cmd.batch

@@ -18,6 +18,7 @@ import Html exposing (..)
 import Html.Attributes as HA
 import Html.Events as HE
 import Process
+import Settings exposing (Settings)
 import Task
 
 
@@ -75,7 +76,6 @@ type alias Model =
     , state : State
     , alert : Maybe String
     , triedLetterStates : Dict Char LetterState
-    , clearInvalidAttempt : Bool -- If the row should be cleared after an invalid word was submitted
     }
 
 
@@ -108,8 +108,8 @@ initFromSavedState word attempts =
     }
 
 
-init : String -> Maybe SavedState -> Bool -> ( Model, Cmd Msg )
-init word savedState clearInvalidAttempt =
+init : String -> Maybe SavedState -> ( Model, Cmd Msg )
+init word savedState =
     let
         baseState =
             { history = []
@@ -118,7 +118,6 @@ init word savedState clearInvalidAttempt =
             , selectedCell = 0
             , state = Playing
             , triedLetterStates = Dict.empty
-            , clearInvalidAttempt = clearInvalidAttempt
             , alert = Nothing
             }
     in
@@ -150,8 +149,8 @@ type Msg
     | FocusNextCell
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Msg -> Model -> Settings -> ( Model, Cmd Msg )
+update msg model settings =
     case msg of
         SubmitAttempt ->
             case Array.toList model.currentAttempt of
@@ -162,7 +161,7 @@ update msg model =
                     in
                     case validateAttempt model.correctWord attempt of
                         Nothing ->
-                            if model.clearInvalidAttempt then
+                            if settings.clearInvalidAttempt then
                                 ( { model
                                     | currentAttempt = emptyRow
                                     , alert = createAlert attempt
