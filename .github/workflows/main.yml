@@ -4,21 +4,40 @@ on:
       - "master"
 
 jobs:
-  build:
-    name: Build and minimize Elm
+  test:
+    name: Run test suite
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Compile Elm to JS
-        run: |
-          npx elm make src/Main.elm --optimize --output elm.js
+      - uses: actions/checkout@v4
+      - uses: jorelali/setup-elm@v6
+        with:
+          elm-version: 0.19.1
 
-      - name: Treeshake and minimize compiled js
+      - name: Run elm tests
+        run: npx elm-test --report="junit" > test-results.xml
+
+      - name: Test Summary
+        uses: test-summary/action@v2
+        with:
+          paths: "test-results.xml"
+        if: always()
+  build:
+    name: Build and minimize Elm
+    runs-on: ubuntu-22.04
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jorelali/setup-elm@v6
+        with:
+          elm-version: 0.19.1
+      - name: Compile Elm to JS
+        run: elm make src/Main.elm --optimize --output elm.js
+
+      - name: Tree shake and minimize compiled js
         run: |
-          npx uglify-js elm.js --compress 'pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,keep_fargs=false,unsafe_comps,unsafe'
-          npx uglify-js elm.js --mangle --output elm.min.js
+          npx uglify-js elm.js --compress 'pure_funcs=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9],pure_getters,unsafe_comps,unsafe' --mangle 'reserved=[F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9]' --output elm.min.js
 
       - name: Move to build directory
         run: |
@@ -28,7 +47,7 @@ jobs:
           mv style.css build/
 
       - name: Upload production artifacts
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v3
         with:
           name: github-pages
           path: build/
@@ -53,4 +72,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v1
+        uses: actions/deploy-pages@v4
