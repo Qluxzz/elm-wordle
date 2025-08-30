@@ -6,6 +6,7 @@ port module Game exposing
     , State(..)
     , compareWords
     , init
+    , matchingWords
     , update
     , view
     )
@@ -17,7 +18,9 @@ import FiveLetterWords as FLW
 import Html exposing (..)
 import Html.Attributes as HA
 import Html.Events as HE
+import List.Extra
 import Process
+import Set
 import Settings exposing (Settings)
 import Task
 
@@ -196,10 +199,12 @@ update msg model settings =
 
                                     else
                                         Playing
+                                , alert = Just <| "Just " ++ String.fromInt (matchingWords updatedHistory |> Set.size) ++ "/" ++ String.fromInt FLW.wordsLength ++ " matching words left!"
                               }
                             , Cmd.batch
                                 [ focusFirstCell
                                 , saveHistory (List.map convertAttemptToString updatedHistory)
+                                , clearAlert
                                 ]
                             )
 
@@ -596,3 +601,84 @@ createAlert attempt =
 clearAlert : Cmd Msg
 clearAlert =
     Process.sleep 1500 |> Task.perform (\_ -> ClearAlert)
+
+
+
+-- PUBLIC FUNCTION
+
+
+aCharCode : number
+aCharCode =
+    65
+
+
+zCharCode : number
+zCharCode =
+    90
+
+
+validChars : Set.Set Char
+validChars =
+    Set.fromList (List.range aCharCode zCharCode |> List.map Char.fromCode)
+
+
+{-| Returns a set of possible words based on the users existing attempts
+-}
+matchingWords : List Attempt -> Set.Set String
+matchingWords history =
+    let
+        -- Start with all characters allowed at every position
+        initialAllowed : Array (Set.Set Char)
+        initialAllowed =
+            Array.repeat 5 validChars
+
+        -- Update allowed letters & required letters based on guess feedback
+        processLetter : Int -> Char -> LetterState -> ( Array (Set.Set Char), Set.Set Char ) -> ( Array (Set.Set Char), Set.Set Char )
+        processLetter idx char state ( allowed, required ) =
+            case state of
+                CorrectPlace ->
+                    ( Array.set idx (Set.singleton char) allowed
+                    , Set.insert char required
+                    )
+
+                IncorrectPlace ->
+                    ( Array.set idx (Set.remove char (Array.get idx allowed |> Maybe.withDefault Set.empty)) allowed
+                    , Set.insert char required
+                    )
+
+                NotIncluded ->
+                    if Set.member char required then
+                        -- Gray but still needed elsewhere: ban only here
+                        ( Array.set idx (Set.remove char (Array.get idx allowed |> Maybe.withDefault Set.empty)) allowed
+                        , required
+                        )
+
+                    else
+                        -- Truly absent: remove from all positions
+                        ( Array.map (Set.remove char) allowed
+                        , required
+                        )
+
+        processGuess : List ( Char, LetterState ) -> ( Array (Set.Set Char), Set.Set Char ) -> ( Array (Set.Set Char), Set.Set Char )
+        processGuess guess acc =
+            List.indexedMap Tuple.pair guess
+                |> List.foldl (\( idx, ( char, state ) ) acc2 -> processLetter idx char state acc2) acc
+
+        ( allowedAt, required_ ) =
+            List.foldl processGuess ( initialAllowed, Set.empty ) history
+
+        isValid : String -> Bool
+        isValid word =
+            let
+                chars =
+                    String.toList word
+            in
+            -- Fail fast: check required letters first
+            Set.foldl
+                (\c ok -> ok && String.contains (String.fromChar c) word)
+                True
+                required_
+                && -- Then check per-position constraints
+                   List.Extra.all2 Set.member chars (Array.toList allowedAt)
+    in
+    Set.filter isValid FLW.words

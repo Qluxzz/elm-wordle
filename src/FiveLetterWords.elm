@@ -1,4 +1,4 @@
-module FiveLetterWords exposing (getRandomWord, isValidWord, wordsLength)
+module FiveLetterWords exposing (getRandomWord, isValidWord, words, wordsLength)
 
 import Set exposing (Set)
 
