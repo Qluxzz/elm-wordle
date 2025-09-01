@@ -31,8 +31,6 @@ body {
     flex-direction: column;
     flex-grow: 1;
     gap: 1px;
-    max-width: 450px;
-    width: 100%;
     padding: 5px;
 }
 
@@ -97,7 +95,6 @@ body {
 .historic-row>div,
 .empty-row>div,
 .active-row>div {
-    flex-grow: 1;
     padding: 10px;
     border: 1px solid black;
     border-radius: 10px;
@@ -105,8 +102,8 @@ body {
     font-size: 32px;
     font-weight: bold;
     text-align: center;
-    width: 1em;
-    height: 67px;
+    width: 1.5em;
+    height: 1.5em;
 
     display: flex;
     align-items: center;
