@@ -1,50 +1,50 @@
 module CompareWordsTest exposing (suite)
 
 import Expect
-import Game exposing (LetterState(..), compareWords)
-import Test exposing (..)
+import Game
+import Test exposing (Test)
 
 
-cases : List ( ( String, String ), List ( Char, LetterState ) )
+cases : List ( ( String, String ), List ( Char, Game.LetterState ) )
 cases =
     [ ( ( "GUESS", "HUMAN" )
-      , [ ( 'H', NotIncluded )
-        , ( 'U', CorrectPlace )
-        , ( 'M', NotIncluded )
-        , ( 'A', NotIncluded )
-        , ( 'N', NotIncluded )
+      , [ ( 'H', Game.NotIncluded )
+        , ( 'U', Game.CorrectPlace )
+        , ( 'M', Game.NotIncluded )
+        , ( 'A', Game.NotIncluded )
+        , ( 'N', Game.NotIncluded )
         ]
       )
     , ( ( "ZOOMS", "GUESS" )
-      , [ ( 'G', NotIncluded )
-        , ( 'U', NotIncluded )
-        , ( 'E', NotIncluded )
-        , ( 'S', NotIncluded )
-        , ( 'S', CorrectPlace )
+      , [ ( 'G', Game.NotIncluded )
+        , ( 'U', Game.NotIncluded )
+        , ( 'E', Game.NotIncluded )
+        , ( 'S', Game.NotIncluded )
+        , ( 'S', Game.CorrectPlace )
         ]
       )
     , ( ( "GUESS", "SUCKS" )
-      , [ ( 'S', IncorrectPlace )
-        , ( 'U', CorrectPlace )
-        , ( 'C', NotIncluded )
-        , ( 'K', NotIncluded )
-        , ( 'S', CorrectPlace )
+      , [ ( 'S', Game.IncorrectPlace )
+        , ( 'U', Game.CorrectPlace )
+        , ( 'C', Game.NotIncluded )
+        , ( 'K', Game.NotIncluded )
+        , ( 'S', Game.CorrectPlace )
         ]
       )
     , ( ( "STUFF", "SUCKS" )
-      , [ ( 'S', CorrectPlace )
-        , ( 'U', IncorrectPlace )
-        , ( 'C', NotIncluded )
-        , ( 'K', NotIncluded )
-        , ( 'S', NotIncluded )
+      , [ ( 'S', Game.CorrectPlace )
+        , ( 'U', Game.IncorrectPlace )
+        , ( 'C', Game.NotIncluded )
+        , ( 'K', Game.NotIncluded )
+        , ( 'S', Game.NotIncluded )
         ]
       )
     , ( ( "STUFF", "USSSS" )
-      , [ ( 'U', IncorrectPlace )
-        , ( 'S', IncorrectPlace )
-        , ( 'S', NotIncluded )
-        , ( 'S', NotIncluded )
-        , ( 'S', NotIncluded )
+      , [ ( 'U', Game.IncorrectPlace )
+        , ( 'S', Game.IncorrectPlace )
+        , ( 'S', Game.NotIncluded )
+        , ( 'S', Game.NotIncluded )
+        , ( 'S', Game.NotIncluded )
         ]
       )
     ]
@@ -52,12 +52,12 @@ cases =
 
 suite : Test
 suite =
-    describe "validateAttempt"
+    Test.describe "validateAttempt"
         (List.map
             (\( ( correct, attempt ), wanted ) ->
-                test (correct ++ " " ++ attempt) <|
+                Test.test (correct ++ " " ++ attempt) <|
                     \_ ->
-                        compareWords
+                        Game.compareWords
                             correct
                             (attempt |> String.toList)
                             |> Expect.equal wanted

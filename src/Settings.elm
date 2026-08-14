@@ -1,4 +1,4 @@
-module Settings exposing (..)
+module Settings exposing (Settings)
 
 
 type alias Settings =

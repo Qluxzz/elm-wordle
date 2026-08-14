@@ -1,5 +1,6 @@
 port module Game exposing
-    ( LetterState(..)
+    ( Effect
+    , LetterState(..)
     , Model
     , Msg(..)
     , SavedState
@@ -7,17 +8,18 @@ port module Game exposing
     , compareWords
     , init
     , matchingWords
+    , perform
     , update
     , view
     )
 
 import Array exposing (Array)
-import Browser.Dom as Dom
+import Browser.Dom
 import Dict exposing (Dict)
-import FiveLetterWords as FLW
-import Html exposing (..)
-import Html.Attributes as HA
-import Html.Events as HE
+import FiveLetterWords
+import Html exposing (Html)
+import Html.Attributes
+import Html.Events
 import List.Extra
 import Process
 import Set
@@ -111,7 +113,7 @@ initFromSavedState word attempts =
     }
 
 
-init : String -> Maybe SavedState -> ( Model, Cmd Msg )
+init : String -> Maybe SavedState -> ( Model, Effect )
 init word savedState =
     let
         baseState =
@@ -138,7 +140,7 @@ init word savedState =
 
         Nothing ->
             baseState
-    , focusFirstCell
+    , FocusCell 0
     )
 
 
@@ -147,12 +149,39 @@ type Msg
     | CharEntered Char
     | RemoveChar
     | FocusedInput Int
-    | ClearAlert
+    | AlertCleared
     | FocusPreviousCell
     | FocusNextCell
 
 
-update : Msg -> Model -> Settings -> ( Model, Cmd Msg )
+type Effect
+    = None
+    | FocusCell Int
+    | SaveHistory (List String)
+    | ClearAlert
+    | Batch (List Effect)
+
+
+perform : Effect -> Cmd Msg
+perform effect =
+    case effect of
+        None ->
+            Cmd.none
+
+        FocusCell id ->
+            focusCell id
+
+        SaveHistory attempts ->
+            saveHistory attempts
+
+        ClearAlert ->
+            clearAlert
+
+        Batch effects ->
+            effects |> List.map perform |> Cmd.batch
+
+
+update : Msg -> Model -> Settings -> ( Model, Effect )
 update msg model settings =
     case msg of
         SubmitAttempt ->
@@ -169,28 +198,18 @@ update msg model settings =
                                     | currentAttempt = emptyRow
                                     , alert = createAlert attempt
                                   }
-                                , Cmd.batch
-                                    [ focusFirstCell
-                                    , clearAlert
-                                    ]
+                                , Batch [ FocusCell 0, ClearAlert ]
                                 )
 
                             else
-                                ( { model | alert = createAlert attempt }, clearAlert )
+                                ( { model | alert = createAlert attempt }, ClearAlert )
 
                         Just validated ->
                             let
                                 updatedHistory =
                                     model.history ++ [ validated ]
-                            in
-                            ( { model
-                                | history = updatedHistory
-                                , currentAttempt = emptyRow
-                                , triedLetterStates =
-                                    combineLetterStates
-                                        model.triedLetterStates
-                                        validated
-                                , state =
+
+                                newState =
                                     if List.all (\( _, lS ) -> lS == CorrectPlace) validated then
                                         Won
 
@@ -199,17 +218,31 @@ update msg model settings =
 
                                     else
                                         Playing
-                                , alert = Just <| "Just " ++ String.fromInt (matchingWords updatedHistory |> Set.size) ++ "/" ++ String.fromInt FLW.wordsLength ++ " matching words left!"
+                            in
+                            ( { model
+                                | history = updatedHistory
+                                , currentAttempt = emptyRow
+                                , triedLetterStates =
+                                    combineLetterStates
+                                        model.triedLetterStates
+                                        validated
+                                , state = newState
+                                , alert =
+                                    if newState /= Playing then
+                                        Nothing
+
+                                    else
+                                        Just <| "Just " ++ String.fromInt (matchingWords updatedHistory |> Set.size) ++ "/" ++ String.fromInt FiveLetterWords.wordsLength ++ " matching words left!"
                               }
-                            , Cmd.batch
-                                [ focusFirstCell
-                                , saveHistory (List.map convertAttemptToString updatedHistory)
-                                , clearAlert
+                            , Batch
+                                [ FocusCell 0
+                                , SaveHistory (List.map convertAttemptToString updatedHistory)
+                                , ClearAlert
                                 ]
                             )
 
                 _ ->
-                    ( model, Cmd.none )
+                    ( model, None )
 
         CharEntered char ->
             ( { model
@@ -219,7 +252,7 @@ update msg model settings =
                         (Just char)
                         model.currentAttempt
               }
-            , focusCell (nextCell model.selectedCell)
+            , FocusCell (nextCell model.selectedCell)
             )
 
         {-
@@ -237,24 +270,24 @@ update msg model settings =
                             previousCell model.selectedCell
             in
             ( { model | currentAttempt = Array.set clearIndex Nothing model.currentAttempt }
-            , focusCell clearIndex
+            , FocusCell clearIndex
             )
 
         FocusedInput cellId ->
-            ( { model | selectedCell = cellId }, Cmd.none )
+            ( { model | selectedCell = cellId }, None )
 
         FocusPreviousCell ->
             ( model
-            , focusCell (previousCell model.selectedCell)
+            , FocusCell (previousCell model.selectedCell)
             )
 
         FocusNextCell ->
             ( model
-            , focusCell (nextCell model.selectedCell)
+            , FocusCell (nextCell model.selectedCell)
             )
 
-        ClearAlert ->
-            ( { model | alert = Nothing }, Cmd.none )
+        AlertCleared ->
+            ( { model | alert = Nothing }, None )
 
 
 
@@ -280,9 +313,9 @@ view model =
                         Nothing
                     ]
     in
-    div [ HA.class "game" ]
-        [ div
-            [ HA.class "rows" ]
+    Html.div [ Html.Attributes.class "game" ]
+        [ Html.div
+            [ Html.Attributes.class "rows" ]
             (rows ++ List.repeat (maximumAttempts - List.length rows) emptyRowView)
         , keyboardView
             model.triedLetterStates
@@ -290,10 +323,10 @@ view model =
             (canClearAttempt currentAttemptChars)
         , case model.alert of
             Just alert ->
-                div [ HA.class "alert" ] [ text alert ]
+                Html.div [ Html.Attributes.class "alert" ] [ Html.text alert ]
 
             Nothing ->
-                text ""
+                Html.text ""
         ]
 
 
@@ -305,41 +338,41 @@ keyboardView triedLetters canSubmit canClear =
             letters
                 |> List.map
                     (\char ->
-                        div
-                            (HE.onClick (CharEntered char)
+                        Html.div
+                            (Html.Events.onClick (CharEntered char)
                                 :: (case Dict.get char triedLetters of
                                         Just c ->
-                                            [ HA.style "background" (backgroundColor c) ]
+                                            [ Html.Attributes.style "background" (backgroundColor c) ]
 
                                         Nothing ->
                                             []
                                    )
                             )
-                            [ text (char |> Char.toUpper |> String.fromChar) ]
+                            [ Html.text (char |> Char.toUpper |> String.fromChar) ]
                     )
 
         clearButton : Html Msg
         clearButton =
-            div
-                [ HA.classList [ ( "disabled", not canClear ) ]
-                , HE.onClick RemoveChar
+            Html.div
+                [ Html.Attributes.classList [ ( "disabled", not canClear ) ]
+                , Html.Events.onClick RemoveChar
                 ]
-                [ text "⬅️"
+                [ Html.text "⬅️"
                 ]
 
         submitButton : Html Msg
         submitButton =
-            div
-                [ HA.classList [ ( "disabled", not canSubmit ) ]
-                , HE.onClick SubmitAttempt
-                , HA.style "flex-shrink" "0"
-                , HA.style "flex-basis" "34px"
+            Html.div
+                [ Html.Attributes.classList [ ( "disabled", not canSubmit ) ]
+                , Html.Events.onClick SubmitAttempt
+                , Html.Attributes.style "flex-shrink" "0"
+                , Html.Attributes.style "flex-basis" "34px"
                 ]
-                [ text "Submit" ]
+                [ Html.text "Submit" ]
     in
-    div [ HA.class "keyboard" ]
+    Html.div [ Html.Attributes.class "keyboard" ]
         (List.map
-            (div [ HA.class "keyboard-row" ])
+            (Html.div [ Html.Attributes.class "keyboard-row" ])
             [ row [ 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P' ]
             , row [ 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L' ]
             , clearButton
@@ -351,33 +384,33 @@ keyboardView triedLetters canSubmit canClear =
 
 historicRow : List Letter -> Html msg
 historicRow attempt =
-    div
-        [ HA.class "historic-row" ]
+    Html.div
+        [ Html.Attributes.class "historic-row" ]
         (attempt
             |> List.map
                 (\( char, state ) ->
-                    div
-                        [ HA.style "background" (backgroundColor state) ]
-                        [ text (String.fromChar char) ]
+                    Html.div
+                        [ Html.Attributes.style "background" (backgroundColor state) ]
+                        [ Html.text (String.fromChar char) ]
                 )
         )
 
 
 activeRow : Array (Maybe Char) -> Int -> Html Msg
 activeRow attempt focusedIndex =
-    div
-        [ HA.class "active-row" ]
+    Html.div
+        [ Html.Attributes.class "active-row" ]
         (attempt
             |> Array.indexedMap
                 (\index ->
                     \char ->
-                        div
-                            [ HA.id <| "cell" ++ String.fromInt index
-                            , HA.classList [ ( "selected", focusedIndex == index ) ]
-                            , HE.onFocus (FocusedInput index)
-                            , HE.onClick (FocusedInput index)
+                        Html.div
+                            [ Html.Attributes.id <| "cell" ++ String.fromInt index
+                            , Html.Attributes.classList [ ( "selected", focusedIndex == index ) ]
+                            , Html.Events.onFocus (FocusedInput index)
+                            , Html.Events.onClick (FocusedInput index)
                             ]
-                            [ text
+                            [ Html.text
                                 (char
                                     |> Maybe.map String.fromChar
                                     |> Maybe.withDefault ""
@@ -390,10 +423,10 @@ activeRow attempt focusedIndex =
 
 emptyRowView : Html Msg
 emptyRowView =
-    div
-        [ HA.class "empty-row"
+    Html.div
+        [ Html.Attributes.class "empty-row"
         ]
-        (List.range 0 (defaultRowLength - 1) |> List.map (\_ -> div [] []))
+        (List.range 0 (defaultRowLength - 1) |> List.map (\_ -> Html.div [] []))
 
 
 
@@ -407,12 +440,7 @@ convertAttemptToString attempt =
 
 focusCell : Int -> Cmd Msg
 focusCell id =
-    Task.attempt (\_ -> FocusedInput id) (Dom.focus ("cell" ++ String.fromInt id))
-
-
-focusFirstCell : Cmd Msg
-focusFirstCell =
-    focusCell 0
+    Task.attempt (\_ -> FocusedInput id) (Browser.Dom.focus ("cell" ++ String.fromInt id))
 
 
 nextCell : Int -> Int
@@ -440,7 +468,7 @@ backgroundColor state =
 
 validateAttempt : String -> List Char -> Maybe (List Letter)
 validateAttempt correct attempt =
-    if not (FLW.isValidWord (String.fromList attempt)) then
+    if not (FiveLetterWords.isValidWord (String.fromList attempt)) then
         Nothing
 
     else
@@ -600,7 +628,7 @@ createAlert attempt =
 
 clearAlert : Cmd Msg
 clearAlert =
-    Process.sleep 1500 |> Task.perform (\_ -> ClearAlert)
+    Process.sleep 1500 |> Task.perform (\_ -> AlertCleared)
 
 
 
@@ -681,4 +709,4 @@ matchingWords history =
                 && -- Then check per-position constraints
                    List.Extra.all2 Set.member chars (Array.toList allowedAt)
     in
-    Set.filter isValid FLW.words
+    Set.filter isValid FiveLetterWords.words

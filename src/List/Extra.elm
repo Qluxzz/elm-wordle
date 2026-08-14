@@ -1,4 +1,4 @@
-module List.Extra exposing (..)
+module List.Extra exposing (all2)
 
 
 all2 : (a -> b -> Bool) -> List a -> List b -> Bool

@@ -1,66 +1,26 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-    <meta name="description" content="Wordle clone made in Elm">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1"
+    />
+    <meta name="description" content="Wordle clone made in Elm" />
     <title>Elm Wordle</title>
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗨️</text></svg>">
     <link rel="stylesheet" href="style.css" />
-    <script src="elm.js" type="text/javascript"></script>
-</head>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗨️</text></svg>"
+    />
+    <script type="module" src="/main.js"></script>
+  </head>
 
-<body>
+  <body>
     <pre id="elm"></pre>
-    <script type="text/javascript">
-        const now = new Date(Date.now())
-
-        const [year, month, date] = [
-            now.getFullYear(),
-            now.getMonth() + 1, // getMonth is zero indexed
-            now.getDate()
-        ]
-
-        const seed = parseInt(`${year}${month}${date}`, 10)
-        const savePrefix = "save-"
-        const key = `${savePrefix}${seed}`
-        const savedState = localStorage.getItem(key)
-
-        // We haven't saved any progress for today's word
-        // Clear any existing saved state as well
-        if (!savedState) {
-            const keys = Object.keys(localStorage).filter(x => x.startsWith(savePrefix))
-            for (const key of keys) {
-                localStorage.removeItem(key)
-            }
-        }
-
-        const savedSettings = localStorage.getItem("settings")
-
-        const app = Elm.Main.init({
-            node: document.getElementById("elm"),
-            flags: {
-                seed,
-                save: savedState ? JSON.parse(savedState) : null,
-                settings: savedSettings ? JSON.parse(savedSettings) : null
-            }
-        })
-
-        app.ports.saveHistory.subscribe(history =>
-            localStorage.setItem(key, JSON.stringify(history))
-        )
-
-        app.ports.shareResult.subscribe(async result => {
-            await navigator.clipboard.writeText(result)
-        })
-
-        app.ports.persistSettings.subscribe(settings =>
-            localStorage.setItem("settings", JSON.stringify(settings))
-        )
-    </script>
-</body>
-
+    <noscript>
+      This app requires JavaScript, please enable it and reload the page!
+    </noscript>
+  </body>
 </html>

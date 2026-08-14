@@ -1,15 +1,14 @@
-port module Main exposing (main)
+port module Main exposing (init, main, update, view)
 
 import Browser
-import Browser.Events exposing (onKeyUp)
-import Browser.Navigation exposing (reload)
-import FiveLetterWords exposing (getRandomWord, wordsLength)
+import Browser.Events
+import Browser.Navigation
+import FiveLetterWords
 import Game
-import Html exposing (..)
-import Html.Attributes as HA
+import Html exposing (Html)
+import Html.Attributes
 import Html.Events
-import Json.Decode as Decode
-import Platform.Cmd as Cmd
+import Json.Decode
 import Random
 import Settings exposing (Settings)
 import Task
@@ -70,12 +69,54 @@ port shareResult : String -> Cmd msg
 port persistSettings : Settings -> Cmd msg
 
 
+type Effect
+    = None
+    | MapGame Game.Effect
+    | FetchLocalTime
+    | CopyResult String
+    | PersistSettings Settings
+    | Reload
+    | Batch (List Effect)
+
+
+perform : Effect -> Cmd Msg
+perform effect =
+    case effect of
+        None ->
+            Cmd.none
+
+        MapGame gameEffect ->
+            Cmd.map Game (Game.perform gameEffect)
+
+        FetchLocalTime ->
+            Task.map2 LocalTime Time.now Time.here |> Task.perform GetLocalTime
+
+        CopyResult result ->
+            shareResult result
+
+        PersistSettings settings ->
+            persistSettings settings
+
+        Reload ->
+            Browser.Navigation.reload
+
+        Batch effects ->
+            effects |> List.map perform |> Cmd.batch
+
+
 
 -- VIEW
 
 
-view : Model -> List (Html Msg)
+view : Model -> Browser.Document Msg
 view model =
+    { title = "ELM Wordle"
+    , body = viewBody model
+    }
+
+
+viewBody : Model -> List (Html Msg)
+viewBody model =
     headerView
         :: (case model.state of
                 Playing gameModel ->
@@ -88,7 +129,7 @@ view model =
                                     [ model.localTime
                                         |> Maybe.map timeUntilMidnightView
                                         |> Maybe.withDefault (Html.text "")
-                                    , Html.button [ HA.id "share-button", Html.Events.onClick ShareResult ]
+                                    , Html.button [ Html.Attributes.id "share-button", Html.Events.onClick ShareResult ]
                                         [ Html.text
                                             (if model.shared then
                                                 "Shared!"
@@ -114,7 +155,7 @@ view model =
                     ]
 
                 Error message ->
-                    [ div [] [ text message ] ]
+                    [ Html.div [] [ Html.text message ] ]
            )
         ++ [ if model.showSettings then
                 settingsView model.settings
@@ -131,14 +172,14 @@ timeUntilMidnightView localTime =
 
 gameResultsView : String -> List (Html Msg) -> String -> Html Msg
 gameResultsView correctWord extra resultText =
-    div [ HA.class "overlay" ]
-        ([ h1 [ HA.style "text-align" "center" ]
-            [ text resultText ]
-         , a
-            [ HA.href ("https://www.merriam-webster.com/dictionary/" ++ String.toLower correctWord)
-            , HA.target "_blank"
+    Html.div [ Html.Attributes.class "overlay" ]
+        ([ Html.h1 [ Html.Attributes.style "text-align" "center" ]
+            [ Html.text resultText ]
+         , Html.a
+            [ Html.Attributes.href ("https://www.merriam-webster.com/dictionary/" ++ String.toLower correctWord)
+            , Html.Attributes.target "_blank"
             ]
-            [ text ("Dictionary entry for \"" ++ String.toLower correctWord ++ "\"") ]
+            [ Html.text ("Dictionary entry for \"" ++ String.toLower correctWord ++ "\"") ]
          ]
             ++ extra
         )
@@ -154,9 +195,9 @@ headerView =
 
 settingsView : Settings -> Html Msg
 settingsView settings =
-    Html.div [ HA.id "settings" ]
+    Html.div [ Html.Attributes.id "settings" ]
         [ Html.h2 [] [ Html.text "Settings" ]
-        , Html.p [] [ Html.text "Clear letters after invalid attempt?", Html.input [ Html.Events.onCheck ToggleClearInvalidAttempt, HA.type_ "checkbox", HA.style "margin-left" "10px", HA.checked settings.clearInvalidAttempt ] [] ]
+        , Html.p [] [ Html.text "Clear letters after invalid attempt?", Html.input [ Html.Events.onCheck ToggleClearInvalidAttempt, Html.Attributes.type_ "checkbox", Html.Attributes.style "margin-left" "10px", Html.Attributes.checked settings.clearInvalidAttempt ] [] ]
         , Html.button [ Html.Events.onClick HideSettings ] [ Html.text "Close" ]
         ]
 
@@ -165,23 +206,23 @@ settingsView settings =
 -- UPDATE
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Effect )
 update msg model =
     case msg of
         Game gameMsg ->
             case model.state of
                 Playing gameModel ->
                     let
-                        ( updatedModel, cmd ) =
+                        ( updatedModel, effect ) =
                             Game.update gameMsg gameModel model.settings
                     in
-                    ( { model | state = Playing updatedModel }, Cmd.map Game cmd )
+                    ( { model | state = Playing updatedModel }, MapGame effect )
 
                 _ ->
-                    ( model, Cmd.none )
+                    ( model, None )
 
         NoOp ->
-            ( model, Cmd.none )
+            ( model, None )
 
         Tick time ->
             let
@@ -191,14 +232,14 @@ update msg model =
             in
             ( { model | localTime = Maybe.map (\l -> { l | posix = time }) model.localTime }
             , if shouldRefresh then
-                reload
+                Reload
 
               else
-                Cmd.none
+                None
             )
 
         GetLocalTime timeAndZone ->
-            ( { model | localTime = Just timeAndZone }, Cmd.none )
+            ( { model | localTime = Just timeAndZone }, None )
 
         ShareResult ->
             case ( model.state, model.localTime ) of
@@ -228,16 +269,16 @@ update msg model =
                         date =
                             toIsoDate localTime
                     in
-                    ( { model | shared = True }, shareResult <| "Wordle " ++ date ++ "\n" ++ formatted )
+                    ( { model | shared = True }, CopyResult <| "Wordle " ++ date ++ "\n" ++ formatted )
 
                 _ ->
-                    ( model, Cmd.none )
+                    ( model, None )
 
         ShowSettings ->
-            ( { model | showSettings = True }, Cmd.none )
+            ( { model | showSettings = True }, None )
 
         HideSettings ->
-            ( { model | showSettings = False }, Cmd.none )
+            ( { model | showSettings = False }, None )
 
         ToggleClearInvalidAttempt value ->
             let
@@ -247,7 +288,7 @@ update msg model =
                 updatedSettings =
                     { settings | clearInvalidAttempt = value }
             in
-            ( { model | settings = updatedSettings }, persistSettings updatedSettings )
+            ( { model | settings = updatedSettings }, PersistSettings updatedSettings )
 
 
 
@@ -270,17 +311,13 @@ defaultSettings =
 main : Program Flags Model Msg
 main =
     Browser.document
-        { init = startNewGame
-        , view =
-            \model ->
-                { title = "ELM Wordle"
-                , body = view model
-                }
-        , update = \msg -> \model -> update msg model
+        { init = init >> Tuple.mapSecond perform
+        , view = view
+        , update = \msg model -> update msg model |> Tuple.mapSecond perform
         , subscriptions =
             \_ ->
                 Sub.batch
-                    [ onKeyUp keyDecoder
+                    [ Browser.Events.onKeyUp keyDecoder
                     , Time.every 1000 Tick
                     ]
         }
@@ -290,11 +327,16 @@ main =
 -- Helpers
 
 
-startNewGame : Flags -> ( Model, Cmd Msg )
+init : Flags -> ( Model, Effect )
+init flags =
+    startNewGame flags
+
+
+startNewGame : Flags -> ( Model, Effect )
 startNewGame { seed, save, settings } =
     let
         ( index, _ ) =
-            Random.step (Random.int 0 wordsLength) (Random.initialSeed seed)
+            Random.step (Random.int 0 FiveLetterWords.wordsLength) (Random.initialSeed seed)
 
         initSettings =
             settings |> Maybe.withDefault defaultSettings
@@ -308,26 +350,23 @@ startNewGame { seed, save, settings } =
             , settings = initSettings
             }
     in
-    case getRandomWord index of
+    case FiveLetterWords.getRandomWord index of
         Just word ->
             let
-                ( gameModel, cmd ) =
+                ( gameModel, effect ) =
                     Game.init word save
             in
             ( { defaultModel | state = Playing gameModel }
-            , Cmd.batch
-                [ Cmd.map Game cmd
-                , Task.map2 LocalTime Time.now Time.here |> Task.perform GetLocalTime
-                ]
+            , Batch [ MapGame effect, FetchLocalTime ]
             )
 
         Nothing ->
-            ( defaultModel, Cmd.none )
+            ( defaultModel, None )
 
 
-keyDecoder : Decode.Decoder Msg
+keyDecoder : Json.Decode.Decoder Msg
 keyDecoder =
-    Decode.map toKey (Decode.field "key" Decode.string)
+    Json.Decode.map toKey (Json.Decode.field "key" Json.Decode.string)
 
 
 between : comparable -> comparable -> comparable -> Bool

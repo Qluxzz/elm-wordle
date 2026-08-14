@@ -131,6 +131,8 @@ body {
     box-shadow: 2px 2px 3px #111;
     border: 1px solid #111;
     border-radius: 10px;
+    padding: 10px;
+    text-align: center;
 }
 
 .overlay {
