@@ -3,6 +3,7 @@ import elm from "vite-plugin-elm"
 import { VitePWA } from "vite-plugin-pwa"
 
 export default defineConfig(({ mode }) => ({
+  base: "/elm-wordle/",
   plugins: [
     elm({
       debug: mode !== "production",
@@ -16,7 +17,8 @@ export default defineConfig(({ mode }) => ({
         name: "Elm Wordle",
         description: "A clone of the popular word guessing game Wordle",
         icons: [],
-        start_url: "/",
+        start_url: "/elm-wordle/",
+        scope: "/elm-wordle/",
         display: "browser",
         background_color: "#ffffff",
         theme_color: "#000000",
