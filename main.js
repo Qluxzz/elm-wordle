@@ -34,7 +34,7 @@ const app = Elm.Main.init({
 })
 
 app.ports.saveHistory.subscribe((history) =>
-  localStorage.setItem(key, JSON.stringify(history))
+  localStorage.setItem(key, JSON.stringify(history)),
 )
 
 app.ports.shareResult.subscribe(async (result) => {
@@ -42,5 +42,5 @@ app.ports.shareResult.subscribe(async (result) => {
 })
 
 app.ports.persistSettings.subscribe((settings) =>
-  localStorage.setItem("settings", JSON.stringify(settings))
+  localStorage.setItem("settings", JSON.stringify(settings)),
 )

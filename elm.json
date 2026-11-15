@@ -3,7 +3,7 @@
     "source-directories": [
         "src"
     ],
-    "elm-version": "0.19.2",
+    "elm-version": "0.19.3",
     "dependencies": {
         "direct": {
             "elm/browser": "1.0.2",
@@ -20,7 +20,7 @@
     },
     "test-dependencies": {
         "direct": {
-            "avh4/elm-program-test": "4.0.0",
+            "avh4/elm-program-test": "4.0.1",
             "elm-explorations/test": "2.2.1"
         },
         "indirect": {
