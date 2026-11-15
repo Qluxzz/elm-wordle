@@ -16,7 +16,6 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
-
       - run: npm run review
 
   test:

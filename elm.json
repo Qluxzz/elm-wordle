@@ -20,7 +20,7 @@
     },
     "test-dependencies": {
         "direct": {
-            "avh4/elm-program-test": "4.0.0",
+            "avh4/elm-program-test": "4.0.1",
             "elm-explorations/test": "2.2.1"
         },
         "indirect": {
